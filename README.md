@@ -1,2 +1,2 @@
 # EmbeddedStorage
-Abstraction for use of Wear-levelled storage indexed by keys.
+Abstraction for access of data structs, stored in wear-levelled EEPROM, indexed by keys.
