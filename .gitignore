@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+Examples/ExampleStorage/.vs/
+*.vcxproj
+*.filters
+*.user
+Examples/ExampleStorage/__vm/
+Examples/ExampleStorage/Release/
