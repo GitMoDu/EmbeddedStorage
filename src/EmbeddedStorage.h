@@ -9,7 +9,7 @@ Depends on https://github.com/PRosenb/EEPROMWearLevel.git
 
 #include <stdint.h>
 #include <EEPROMWearLevel.h>
-#include "EmbeddedData.h"
+#include <EmbeddedData.h>
 
 template<const uint8_t BaseVersionCode, const uint8_t MaxPartitions = 5>
 class EmbeddedStorage : public virtual IEmbeddedStorage
@@ -69,10 +69,9 @@ public:
 		{
 			if (Partitions[i].Data->GetKey() == key)
 			{
-				Storage.putArray(Partitions[i].Index, data, Partitions[i].Data->GetSize());
-
 				eeprom_busy_wait();
 
+				Storage.putArray(Partitions[i].Index, data, Partitions[i].Data->GetSize());
 
 				return true;
 			}
