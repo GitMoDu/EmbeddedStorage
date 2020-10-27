@@ -1,6 +1,6 @@
 /*
 
-Depends on https://github.com/PRosenb/EEPROMWearLevel.git
+Depends on https://github.com/GitMoDu/EEPROMWearLevel
 
 */
 
@@ -63,6 +63,26 @@ public:
 		}
 	}
 
+	// Version code automatically changes if the partition list and keys don't match.
+	// Keys are large
+	uint8_t GetVersionCode()
+	{
+		uint32_t rollingKey = BaseVersionCode;
+
+		for (uint8_t i = 0; i < Count; i++)
+		{
+			rollingKey += Partitions[i].Data->GetKey();
+		}
+
+		// Pseudo hash to use all bits.
+		uint8_t version = rollingKey & 0xFF;
+		version += (rollingKey >> 8) & 0xFF;
+		version += (rollingKey >> 16) & 0xFF;
+		version += (rollingKey >> 24) & 0xFF;
+
+		return version;
+	}
+
 	bool SetData(const uint32_t key, const uint8_t* data)
 	{
 		for (uint8_t i = 0; i < Count; i++)
@@ -107,7 +127,7 @@ public:
 			totalLength += lengths[i];
 		}
 
-		Storage.begin(BaseVersionCode, lengths, Count);
+		Storage.begin(GetVersionCode(), lengths, Count);
 
 		eeprom_busy_wait();
 
