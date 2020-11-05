@@ -36,3 +36,9 @@ Examples/ExampleStorage/.vs/
 *.user
 Examples/ExampleStorage/__vm/
 Examples/ExampleStorage/Release/
+Examples/ExampleStorage/Debug/
+*.sln
+Examples/ExampleAsyncStorage/.vs/
+Examples/ExampleAsyncStorage/__vm/
+Examples/ExampleAsyncStorage/Debug/
+Examples/ExampleAsyncStorage/Release/
