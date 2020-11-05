@@ -11,6 +11,7 @@ Depends on https://github.com/GitMoDu/EEPROMWearLevel
 #include <EEPROMWearLevel.h>
 #include <EmbeddedData.h>
 
+
 template<const uint8_t BaseVersionCode, const uint8_t MaxPartitions = 5>
 class EmbeddedStorage : public virtual IEmbeddedStorage
 {
@@ -20,6 +21,7 @@ public:
 private:
 	EEPROMWearLevel Storage;
 
+protected:
 	struct PartitionStruct
 	{
 		IEmbeddedData* Data = nullptr;
@@ -53,8 +55,6 @@ public:
 				}
 			}
 
-			// 2 Bytes for control are reserved.
-			//TODO: Generalize.
 			Partitions[Count].Data = data;
 			Partitions[Count].Index = Count;
 			Count++;
@@ -89,7 +89,8 @@ public:
 		{
 			if (Partitions[i].Data->GetKey() == key)
 			{
-				eeprom_busy_wait();
+				//Serial.println("Found Write Key");
+
 
 				Storage.putArray(Partitions[i].Index, data, Partitions[i].Data->GetSize());
 
@@ -106,7 +107,7 @@ public:
 		{
 			if (Partitions[i].Data->GetKey() == key)
 			{
-				eeprom_busy_wait();
+				//Serial.println("Found Read Key");
 
 				return Storage.getArray(Partitions[i].Index, data, Partitions[i].Data->GetSize());
 			}
@@ -124,13 +125,10 @@ public:
 		for (uint8_t i = 0; i < Count; i++)
 		{
 			lengths[i] = Partitions[i].Data->GetSize() + 4;
-			totalLength += lengths[i];
+			totalLength += Storage.getMaxDataLength(lengths[i]);
 		}
 
-		Storage.begin(GetVersionCode(), lengths, Count);
-
-		eeprom_busy_wait();
-
+		Storage.begin(GetVersionCode(), Count, totalLength);
 
 		for (uint8_t i = 0; i < Count; i++)
 		{
@@ -141,4 +139,35 @@ public:
 	}
 };
 
+// Extension to be used with with at least one TemplateAsyncEmbeddedData.
+// Enables delayed commit, triggered by an outside task.
+template<const uint8_t BaseVersionCode, const uint8_t MaxPartitions = 5>
+class AsyncEmbeddedStorage : public EmbeddedStorage<BaseVersionCode, MaxPartitions>
+{
+private:
+	using EmbeddedStorage<BaseVersionCode, MaxPartitions>::Partitions;
+	using EmbeddedStorage<BaseVersionCode, MaxPartitions>::Count;
+
+public:
+	AsyncEmbeddedStorage()
+		: EmbeddedStorage<BaseVersionCode, MaxPartitions>()
+	{
+	}
+
+	/// Returns true when pending was found and committed.
+	/// False when no partition needs committing.
+	virtual bool CommitNextPending()
+	{
+		for (uint8_t i = 0; i < Count; i++)
+		{
+			if (Partitions[i].Data->NeedsCommit())
+			{
+				Partitions[i].Data->Commit();
+				return true;
+			}
+		}
+
+		return false;
+	}
+};
 #endif
