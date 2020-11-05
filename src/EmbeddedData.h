@@ -68,11 +68,6 @@ public:
 
 	virtual void OnDataUpdated()
 	{
-		Commit();
-	}
-
-	virtual void Commit()
-	{
 		Storage->SetData(T::Key, (uint8_t*)&Data);
 	}
 };
@@ -107,7 +102,7 @@ public:
 	virtual void Commit()
 	{
 		WritePending = false;
-		TemplateEmbeddedData<T>::Commit();
+		TemplateEmbeddedData<T>::OnDataUpdated();
 	}
 };
 #endif
