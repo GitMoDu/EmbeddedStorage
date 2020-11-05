@@ -4,12 +4,16 @@
 
 #define SERIAL_BAUD_RATE 115200
 
+#define _TASK_OO_CALLBACKS
+#define _TASK_SLEEP_ON_IDLE_RUN
+#include <TaskScheduler.h>
 
 
 #include <EmbeddedStorage.h>
+#include <AsyncCommitTaskInclude.h>
 
 
-static const uint32_t BaseVersionCode = 56; // Random value < UINT8_MAX.
+static const uint32_t BaseVersionCode = 7; // Random value < UINT8_MAX.
 
 
 struct TestStruct
@@ -24,10 +28,15 @@ struct TestStruct
 	uint32_t Code2;
 };
 
+// Process scheduler.
+Scheduler SchedulerBase;
+// 
 
-TemplateEmbeddedData<TestStruct> EmbeddedData;
 
-EmbeddedStorage<BaseVersionCode> Storage;
+AsyncEmbeddedStorage<BaseVersionCode, 1> Storage;
+AsyncCommitTask AsyncEmbeddedCommiter(&SchedulerBase, &Storage);
+
+TemplateAsyncEmbeddedData<TestStruct> EmbeddedData(&AsyncEmbeddedCommiter);
 
 void setup()
 {
@@ -52,7 +61,7 @@ void setup()
 	Serial.println(Data->Code);
 	delay(100);
 
-	Data->Code = 1377;
+	Data->Code = 1378;
 
 
 	Start = micros();
@@ -65,4 +74,5 @@ void setup()
 
 void loop()
 {
+	SchedulerBase.execute();
 }
