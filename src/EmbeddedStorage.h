@@ -89,8 +89,6 @@ public:
 		{
 			if (Partitions[i].Data->GetKey() == key)
 			{
-				eeprom_busy_wait();
-
 				Storage.putArray(Partitions[i].Index, data, Partitions[i].Data->GetSize());
 
 				return true;
@@ -106,8 +104,6 @@ public:
 		{
 			if (Partitions[i].Data->GetKey() == key)
 			{
-				eeprom_busy_wait();
-
 				return Storage.getArray(Partitions[i].Index, data, Partitions[i].Data->GetSize());
 			}
 		}
@@ -128,9 +124,6 @@ public:
 		}
 
 		Storage.begin(GetVersionCode(), lengths, Count);
-
-		eeprom_busy_wait();
-
 
 		for (uint8_t i = 0; i < Count; i++)
 		{
