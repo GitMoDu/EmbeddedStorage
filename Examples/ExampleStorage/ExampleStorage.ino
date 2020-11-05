@@ -21,7 +21,6 @@ struct TestStruct
 	}
 
 	uint32_t Code;
-	uint32_t Code2;
 };
 
 
