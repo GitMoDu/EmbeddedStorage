@@ -12,7 +12,7 @@ Depends on https://github.com/PRosenb/EEPROMWearLevel.git
 template<class T>
 class TemplateEmbeddedData : public virtual IEmbeddedData
 {
-private:
+protected:
 	IEmbeddedStorage* Storage = nullptr;
 
 public:
@@ -46,12 +46,12 @@ public:
 		{
 			// No value in Storage, get default from struct declaration.
 			T::SetDefaultValue(Data);
-			OnDataUpdated();
+			Storage->SetData(T::Key, (uint8_t*)&Data);
 		}
 	}
 
 	// Setup to load the value from storage to memory.
-	bool Setup(IEmbeddedStorage* storage)
+	const bool Setup(IEmbeddedStorage* storage)
 	{
 		Storage = storage;
 		if (Storage != nullptr)
@@ -80,6 +80,8 @@ private:
 	volatile bool WritePending = false;
 
 	IEmbeddedDataAsyncCommit* AsyncCommiter = nullptr;
+	using TemplateEmbeddedData<T>::Data;
+	using TemplateEmbeddedData<T>::Storage;
 
 public:
 	TemplateAsyncEmbeddedData(IEmbeddedDataAsyncCommit* asyncCommiter)
@@ -102,7 +104,7 @@ public:
 	virtual void Commit()
 	{
 		WritePending = false;
-		TemplateEmbeddedData<T>::OnDataUpdated();
+		Storage->SetData(T::Key, (uint8_t*)&Data);
 	}
 };
 #endif
