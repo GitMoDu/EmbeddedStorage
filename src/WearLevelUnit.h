@@ -32,7 +32,7 @@ enum WearLevelOption
 	x8 = 8
 };
 
-template<const handle_t SizeBytes, const uint16_t Key = 0, WearLevelOption Option = WearLevelOption::x2>
+template<const handle_t SizeBytes, const uint8_t Key = 0, WearLevelOption Option = WearLevelOption::x2>
 class WearLevelUnit : private EmbeddedEEPROM
 {
 private:
@@ -85,7 +85,7 @@ public:
 	const bool ReadData(const uint8_t* target)
 	{
 		// Get the current counter mask.
-		uint16_t counter = ReadBlock(0);
+		uint8_t counter = ReadBlock(0);
 
 		// Re-using the counter bitmask to store the actual value.
 		counter = GetCounterValue(counter);

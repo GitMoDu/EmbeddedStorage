@@ -7,24 +7,24 @@
 /// <summary>
 /// Depends on https://github.com/FrankBoesing/FastCRC
 /// </summary>
-template<const uint16_t Key = 0>
+template<const uint8_t Key = 0>
 class EmbeddedCrc
 {
 private:
-	FastCRC16 ModBus;
+	FastCRC8 SmBus;
 	uint8_t Seed;
 
 public:
 	EmbeddedCrc() {}
 
-	const uint16_t GetCrc(const uint8_t* data, const handle_t length, const uint16_t salt = 0)
+	const uint16_t GetCrc(const uint8_t* data, const handle_t length, const uint8_t salt = 0)
 	{
-		Seed = Key;
-		ModBus.modbus(&Seed, (size_t)sizeof(uint16_t));
-		Seed = salt;
-		ModBus.modbus_upd(&Seed, (size_t)length);
+		SmBus.smbus(data, (size_t)length);
 
-		return ModBus.modbus_upd(data, (size_t)length);
+		Seed = Key;
+		SmBus.smbus_upd(&Seed, (size_t)sizeof(uint8_t));
+
+		return SmBus.smbus_upd(&salt, (size_t)sizeof(uint8_t));
 	}
 };
 #endif

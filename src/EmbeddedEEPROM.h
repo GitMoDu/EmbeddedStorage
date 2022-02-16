@@ -31,7 +31,7 @@ private:
 	const handle_t StartBlockAddress;
 
 public:
-	static constexpr  uint16_t GetDataBlockCount(const uint16_t sizeBytes) {
+	static constexpr uint16_t GetDataBlockCount(const uint16_t sizeBytes) {
 		// 1 Block holds 1 byte of data.
 		return sizeBytes;
 	}

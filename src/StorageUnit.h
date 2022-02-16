@@ -8,7 +8,7 @@
 /// CRC checked EEPROM storage unit.
 /// </summary>
 /// <param name="SizeBytes">Data size in bytes.</param>
-template<const handle_t SizeBytes, const uint16_t Key = 0>
+template<const handle_t SizeBytes, const uint8_t Key = 0>
 class StorageUnit : private EmbeddedEEPROM
 {
 private:
