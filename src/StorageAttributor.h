@@ -1,6 +1,8 @@
 #ifndef _STORAGE_ATTRIBUTOR_h
 #define _STORAGE_ATTRIBUTOR_h
 
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega328p__) || defined(__AVR_atmega328p__) || defined(__AVR_ATtiny85__)
+
 #include <stdint.h>
 #include <EEPROM.h>
 
@@ -22,7 +24,7 @@ public:
 		return GetHighestBlockSize() < EEPROM.length();
 	}
 
-	const GetUnitStartAddress(const uint8_t unitIndex)
+	const uint16_t GetUnitStartAddress(const uint8_t unitIndex)
 	{
 		uint16_t blockAddress = 0;
 		for (uint8_t i = 0; i < unitIndex; i++)
@@ -44,4 +46,5 @@ private:
 		return blockAddress;
 	}
 };
+#endif
 #endif

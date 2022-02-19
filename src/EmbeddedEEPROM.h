@@ -4,62 +4,142 @@
 #include <stdint.h>
 #include <EEPROM.h>
 
+// #define EEPROM_BOUNDS_CHECK
+// Checks if the write address is within Unit space, at run time.
+// Disabled by default, for performance.
+// Enable for validation, and supply optional Macro for error handling. 
 
-#if defined(ARDUINO_ARCH_AVR)
-#define handle_t uint16_t
-#if defined(__AVR_ATtiny85__)
-#define handle_t uint8_t
-#endif
-#else
-#error Unsuported board.
-#endif 
-
-#define EEPROM_BOUNDS_CHECK
 #if defined(EEPROM_BOUNDS_CHECK)
-#define EEPROM_ON_ERROR Serial.println(F("EEPROM Error"));
+#define EEPROM_ON_ERROR(address) Serial.println(F("EEPROM Error"))
 #else
-#define EEPROM_ON_ERROR
+#define EEPROM_ON_ERROR(address)
 #endif
 
+
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega328p__) || defined(__AVR_atmega328p__)
+#elif defined(__AVR_ATtiny85__)
+#endif
+
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega328p__) || defined(__AVR_atmega328p__) || defined(__AVR_ATtiny85__)
 /// <summary>
 /// Interfaces the Arduino EEPROM,
 ///  with a defined set of operations for use by child classes.
 /// </summary>
+#if defined(ARDUINO_ARCH_AVR)
 class EmbeddedEEPROM
 {
 private:
-	const handle_t StartBlockAddress;
+	const uint16_t StartBlockAddress;
 
 public:
-	static constexpr uint16_t GetDataBlockCount(const uint16_t sizeBytes) {
-		// 1 Block holds 1 byte of data.
-		return sizeBytes;
-	}
-
-public:
-	EmbeddedEEPROM(const handle_t startBlockAddress)
+	EmbeddedEEPROM(const uint16_t startBlockAddress)
 		: StartBlockAddress(startBlockAddress)
 	{}
 
-protected:
-	void EraseBlock(const handle_t offset)
+	/// <summary>
+	/// Clears the entire EEPROM memory. Handle with care.
+	/// </summary>
+	static void EraseEEPROM()
 	{
-		EEPROM[StartBlockAddress + offset] = 0;
+		for (uint16_t i = 0; i < EEPROM.length(); i++)
+		{
+			EEPROM.update(i, UINT8_MAX);
+		}
 	}
 
-	void WriteUpdateBlock(const handle_t offset, const uint8_t block)
+#if defined(EEPROM_BOUNDS_CHECK)
+private:
+	void CheckBounds(int offset)
 	{
+		if (StartBlockAddress >= EEPROM.length()
+			|| (StartBlockAddress + offset) >= EEPROM.length())
+		{
+			EEPROM_ON_ERROR(StartBlockAddress + offset);
+		}
+	}
+#endif
+
+protected:
+	void WriteBlock(const uint16_t offset, const uint8_t block)
+	{
+#if defined(EEPROM_BOUNDS_CHECK)
+		CheckBounds(offset);
+#endif
 		EEPROM.update(StartBlockAddress + offset, block);
 	}
 
-	void WriteBlock(const handle_t offset, const uint8_t block)
+	const uint8_t ReadBlock(const uint16_t offset)
 	{
-		EEPROM[StartBlockAddress + offset] = block;
-	}
-
-	const uint8_t ReadBlock(const handle_t offset)
-	{
+#if defined(EEPROM_BOUNDS_CHECK)
+		CheckBounds(offset);
+#endif
 		return EEPROM[StartBlockAddress + offset];
 	}
+
+	// Arduino EEPROMWearLevel Library flash twidling bits.
+	// https://github.com/PRosenb/EEPROMWearLevel/blob/master/src/avr/EEPROMWearLevelAvr.cpp
+	void ProgramZeroBitsToZero(const uint16_t offset, const uint8_t byteWithZeros) {
+		// EEPROM Mode Bits.
+		// EEPM1.0 = 0 0 - Mode 0 Erase & Write in one operation.
+		// EEPM1.0 = 0 1 - Mode 1 Erase only.
+		// EEPM1.0 = 1 0 - Mode 2 Write only.
+		EECR |= 1 << EEPM1;
+		EECR &= ~(1 << EEPM0);
+		// EEPROM Ready Interrupt Enable.
+		// EERIE = 0 - Interrupt Disable.
+		// EERIE = 1 - Interrupt Enable.
+		EECR &= ~(1 << EERIE);
+
+		// Set EEPROM address - 0x000 - 0x3FF.
+		EEAR = StartBlockAddress + offset;
+
+		// Data write into EEPROM.
+		EEDR = byteWithZeros;
+
+		uint8_t u8SREG = SREG;
+		cli();
+		// Wait for completion previous write.
+		while (EECR & (1 << EEPE));
+		// EEMPE = 1 - Master Write Enable.
+		EECR |= (1 << EEMPE);
+		// EEPE = 1 - Write Enable.
+		EECR |= (1 << EEPE);
+		SREG = u8SREG;
+
+		// Wait for completion of write.
+		while (EECR & (1 << EEPE));
+	}
+
+	void ClearByteToOnes(const uint16_t offset) {
+		// EEPROM Mode Bits.
+		// EEPM1.0 = 0 0 - Mode 0 Erase & Write in one operation.
+		// EEPM1.0 = 0 1 - Mode 1 Erase only.
+		// EEPM1.0 = 1 0 - Mode 2 Write only.
+		// set EEPM0
+		EECR |= 1 << EEPM0;
+		// clear EEPM1
+		EECR &= ~(1 << EEPM1);
+		// EEPROM Ready Interrupt Enable.
+		// EERIE = 0 - Interrupt Disable.
+		// EERIE = 1 - Interrupt Enable.
+		EECR &= ~(1 << EERIE);
+
+		// Set EEPROM address - 0x000 - 0x3FF.
+		EEAR = StartBlockAddress + offset;
+
+		uint8_t u8SREG = SREG;
+		cli();
+		// Wait for completion previous write.
+		while (EECR & (1 << EEPE));
+		// EEMPE = 1 - Master Write Enable.
+		EECR |= (1 << EEMPE);
+		// EEPE = 1 - Write Enable.
+		EECR |= (1 << EEPE);
+		SREG = u8SREG;
+	}
 };
+#endif
+#else
+#pragma Unsuported board.
+#endif 
 #endif

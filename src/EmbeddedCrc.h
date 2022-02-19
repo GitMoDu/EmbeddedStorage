@@ -3,10 +3,14 @@
 
 #include <FastCRC.h>
 
-
+#if !defined(FastCRC_h)
+#pragma Depends on https://github.com/FrankBoesing/FastCRC
+#else
 /// <summary>
+/// Template based abstraction for 8 bit CRC calculation.
 /// Depends on https://github.com/FrankBoesing/FastCRC
 /// </summary>
+/// <param name="Key">Crypto MAC key.</param>
 template<const uint8_t Key = 0>
 class EmbeddedCrc
 {
@@ -17,7 +21,7 @@ private:
 public:
 	EmbeddedCrc() {}
 
-	const uint16_t GetCrc(const uint8_t* data, const handle_t length, const uint8_t salt = 0)
+	const uint8_t GetCrc(const uint8_t* data, const uint16_t length, const uint8_t salt = 0)
 	{
 		SmBus.smbus(data, (size_t)length);
 
@@ -27,4 +31,5 @@ public:
 		return SmBus.smbus_upd(&salt, (size_t)sizeof(uint8_t));
 	}
 };
+#endif
 #endif

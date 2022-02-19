@@ -2,13 +2,18 @@
 #define _STORAGE_UNIT_
 
 #include <EmbeddedEEPROM.h>
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega328p__) || defined(__AVR_atmega328p__) || defined(__AVR_ATtiny85__)
+
 #include <EmbeddedCrc.h>
 
 /// <summary>
 /// CRC checked EEPROM storage unit.
+/// Designed for use with a single data struct or array.
 /// </summary>
 /// <param name="SizeBytes">Data size in bytes.</param>
-template<const handle_t SizeBytes, const uint8_t Key = 0>
+/// <param name="Key">Storage cryptographic salt key.
+///  Changing the key invalidates any previous data.</param>
+template<const uint16_t SizeBytes, const uint8_t Key = SizeBytes>
 class StorageUnit : private EmbeddedEEPROM
 {
 private:
@@ -19,45 +24,28 @@ public:
 	{
 		// 1 Block count for Data.
 		// 1 Extra block for CRC.
-		return GetDataBlockCount() + 1;
-	}
-
-private:
-	static constexpr uint16_t GetDataBlockCount()
-	{
-		return EmbeddedEEPROM::GetDataBlockCount(SizeBytes);
+		return SizeBytes + 1;
 	}
 
 public:
-	StorageUnit(const handle_t startBlockAddress)
+	StorageUnit(const uint16_t startBlockAddress)
 		: EmbeddedEEPROM(startBlockAddress)
 		, Crc()
 	{}
-
-	/// <summary>
-	/// Erase whole unit and start again.
-	/// </summary>
-	void EraseAll()
-	{
-		for (handle_t i = 0; i < GetUsedBlockCount(); i++)
-		{
-			EraseBlock(i);
-		}
-	}
 
 	/// <summary>
 	/// Reads the declared SizeBytes into target array.
 	/// </summary>
 	/// <param name="target">Target array.</param>
 	/// <returns>True if CRC matches.</returns>
-	const bool ReadData(const uint8_t* target)
+	const bool ReadData(uint8_t* target)
 	{
-		for (handle_t i = 0; i < GetDataBlockCount(); i++)
+		for (uint16_t i = 0; i < SizeBytes; i++)
 		{
 			target[i] = ReadBlock(i);
 		}
 
-		return Crc.GetCrc(target, SizeBytes) == ReadBlock(GetDataBlockCount());
+		return Crc.GetCrc(target, SizeBytes) == ReadBlock(SizeBytes);
 	}
 
 	/// <summary>
@@ -66,12 +54,13 @@ public:
 	/// <param name="source">Source array.</param>
 	void WriteData(const uint8_t* source)
 	{
-		for (handle_t i = 0; i < SizeBytes; i++)
+		for (uint16_t i = 0; i < SizeBytes; i++)
 		{
 			WriteBlock(i, source[i]);
 		}
 
-		WriteBlock(GetDataBlockCount(), Crc.GetCrc(source, SizeBytes));
+		WriteBlock(SizeBytes, Crc.GetCrc(source, SizeBytes));
 	}
 };
+#endif
 #endif
