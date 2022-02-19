@@ -1,102 +1,103 @@
 /*
-	Name:
+	Example Storage.
+	Uses StorageUnit to demonstrate use.
+
+	StorageUnit depends on https://github.com/FrankBoesing/FastCRC.
 */
 
-#define SERIAL_BAUD_RATE 115200
+#define SERIAL_BAUD_RATE 9600
 
+#define EEPROM_BOUNDS_CHECK
 
+#include <StorageUnit.h>
 
-#include <EmbeddedStorage.h>
-
-
-static const uint32_t BaseVersionCode = 56; // Random value < UINT8_MAX.
 
 
 struct TestStruct
 {
-	static const uint32_t Key = 5435782; // Random key < UINT32_MAX.
-	static void SetDefaultValue(TestStruct& value)
+	uint8_t Id;
+	uint32_t Value;
+
+	void SetDefaultValue()
 	{
-		value.Code = 640;
+		Id = 123;
+		Value = random(UINT8_MAX);
 	}
-
-	uint32_t Code;
-};
+} TestData;
 
 
-TemplateEmbeddedData<TestStruct> EmbeddedData;
+StorageUnit<sizeof(TestStruct)> EmbeddedStorage(0);
 
-class ClassedEmbeddedDataClass
-{
-public:
-	struct ClassedTestStruct
-	{
-		static const uint32_t Key = 432412; // Random key < UINT32_MAX.
-		static void SetDefaultValue(ClassedTestStruct& value)
-		{
-			value.Code = 5;
-		}
-
-		uint8_t Code;
-	};
-
-	TemplateEmbeddedData<ClassedTestStruct> EmbeddedData2;
-
-	bool PrepareEmbeddedStorage(IEmbeddedStorage* storage)
-	{
-		return EmbeddedData2.Setup(storage);
-	}
-
-	bool Setup(uint8_t overrideValue = 20)
-	{
-		Serial.print(F("Setup value read from EEPROM is: "));
-		Serial.println(EmbeddedData2.GetData()->Code);
-		EmbeddedData2.GetData()->Code = overrideValue;
-		EmbeddedData2.OnDataUpdated();
-	}
-
-} ClassedEmbeddedData;
-
-EmbeddedStorage<BaseVersionCode> Storage;
 
 void setup()
 {
 	Serial.begin(SERIAL_BAUD_RATE);
 
-	uint32_t Start = micros();
+	Serial.println();
+	Serial.println();
+	Serial.println(F("Example Storage Test Start"));
 
-	EmbeddedData.Setup(&Storage);
-	ClassedEmbeddedData.PrepareEmbeddedStorage(&Storage);
+	uint32_t duration = micros();
 
-	Storage.Setup();
+	if (EmbeddedStorage.ReadData((uint8_t*)&TestData))
+	{
+		duration = micros() - duration;
+		Serial.print(F("Found valid data on EEPROM:"));
+		Serial.print('\t');
+		Serial.print(TestData.Id);
+		Serial.print('\t');
+		Serial.println(TestData.Value);
+	}
+	else
+	{
+		duration = micros() - duration;
+		TestData.SetDefaultValue();
+		Serial.println(F("No valid data on EEPROM."));
+	}
 
-	Start = micros() - Start;
-	Serial.print(F("Setup took "));
-	Serial.print(Start);
+	Serial.print(F("Reading "));
+	Serial.print(sizeof(TestStruct));
+	Serial.print(F(" bytes took :\t"));
+	Serial.print(duration);
 	Serial.println(F(" us"));
-
-
-	TestStruct* Data = EmbeddedData.GetData();
-	delay(100);
-
-	Serial.print(F("Value on Startup: "));
-	Serial.println(Data->Code);
-	delay(100);
-
-	Data->Code = 1377;
-
-	
-	Start = micros();
-	EmbeddedData.OnDataUpdated();
-	Start = micros() - Start;
-	Serial.print(F("Update took "));
-	Serial.print(Start);
-	Serial.println(F(" us"));
-
-	// Setup after embedded data has been set and prepared.
-	ClassedEmbeddedData.Setup(20);
 }
 
+bool TestValuePending = false;
 void loop()
 {
+	if (TestValuePending)
+	{
+		TestValuePending = false;
+		Serial.print(F("Writing data to EEPROM:\t"));
+		Serial.println(TestData.Value);
+
+		uint32_t duration = micros();
+		EmbeddedStorage.WriteData((uint8_t*)&TestData);
+		duration = micros() - duration;
+		Serial.print(F("Writing of "));
+		Serial.print(sizeof(TestStruct));
+		Serial.print(F(" bytes took :\t"));
+		Serial.print(duration);
+		Serial.println(F(" us"));
+
+
+		if (EmbeddedStorage.ReadData((uint8_t*)&TestData))
+		{
+			Serial.print(F("Written data on EEPROM is valid:\t"));
+			Serial.print(TestData.Id);
+			Serial.print('\t');
+			Serial.println(TestData.Value);
+		}
+		else
+		{
+			Serial.println(F("Written data on EEPROM was not correctly read back."));
+		}
+		Serial.println();
+	}
+}
+
+void serialEvent()
+{
+	TestData.Value = Serial.parseInt();
+	TestValuePending = true;
 }

@@ -42,3 +42,6 @@ Examples/ExampleAsyncStorage/.vs/
 Examples/ExampleAsyncStorage/__vm/
 Examples/ExampleAsyncStorage/Debug/
 Examples/ExampleAsyncStorage/Release/
+Examples/ExampleWearLevel/.vs
+Examples/ExampleWearLevel/__vm
+Examples/ExampleWearLevel/Release
