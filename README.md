@@ -23,7 +23,8 @@ Special mention for Arduino EEPROMWearLevel Library flash twidling bits.
 
 ## Library:
   - StorageUnit
-    - Templated start address and size.
+    - Templated size and key.
+    - Start address is passed on constructor.
     - CRC validated data.
     - CRC seed Key is optional and can be used for versioning. Defaults to Key = size.
     - 1 byte of EEPROM overhead.
