@@ -1,10 +1,8 @@
 #ifndef _STORAGE_ATTRIBUTOR_h
 #define _STORAGE_ATTRIBUTOR_h
 
-#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega328p__) || defined(__AVR_atmega328p__) || defined(__AVR_ATtiny85__)
-
-#include <stdint.h>
-#include <EEPROM.h>
+#include "EmbeddedStorageBase\EmbeddedEEPROM.h"
+#if defined(EMBEDDED_EEPROM_STORAGE)
 
 /// <summary>
 /// Base attributor class with minimal memory footprint.
@@ -21,7 +19,7 @@ public:
 
 	const bool Validate()
 	{
-		return GetHighestBlockSize() < EEPROM.length();
+		return GetHighestBlockSize() < EEPROM_SIZE();
 	}
 
 	const uint16_t GetUsedSpace()
@@ -31,12 +29,12 @@ public:
 
 	const int16_t GetFreeSpace()
 	{
-		return (int32_t)EEPROM.length() - GetHighestBlockSize();
+		return (int32_t)EEPROM_SIZE() - GetHighestBlockSize();
 	}
 
 	const uint16_t GetTotalSpace()
 	{
-		return EEPROM.length();
+		return EEPROM_SIZE();
 	}
 
 	const uint16_t GetUnitStartAddress(const uint8_t unitIndex)
