@@ -24,6 +24,21 @@ public:
 		return GetHighestBlockSize() < EEPROM.length();
 	}
 
+	const uint16_t GetUsedSpace()
+	{
+		return GetHighestBlockSize();
+	}
+
+	const int16_t GetFreeSpace()
+	{
+		return (int32_t)EEPROM.length() - GetHighestBlockSize();
+	}
+
+	const uint16_t GetTotalSpace()
+	{
+		return EEPROM.length();
+	}
+
 	const uint16_t GetUnitStartAddress(const uint8_t unitIndex)
 	{
 		uint16_t blockAddress = 0;
