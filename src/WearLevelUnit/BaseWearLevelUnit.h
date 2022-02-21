@@ -46,7 +46,6 @@ public:
 		, Crc()
 	{}
 
-public:
 	void Initialize()
 	{
 		if (!ValidateCounterMask())
@@ -62,6 +61,13 @@ public:
 	const uint8_t DebugCounter()
 	{
 		return GetCurrentCounter();
+	}
+#endif
+
+#if defined(EEPROM_RAM_DATA_SIZE)
+	const uint16_t GetStartAddress()
+	{
+		return StartBlockAddress;
 	}
 #endif
 

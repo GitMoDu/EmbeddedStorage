@@ -38,7 +38,7 @@ static uint8_t FakeEEPROM[EEPROM_RAM_DATA_SIZE];
 #if defined(ARDUINO_ARCH_AVR)
 class EmbeddedEEPROM
 {
-private:
+protected:
 	const uint16_t StartBlockAddress;
 
 public:

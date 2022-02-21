@@ -32,6 +32,13 @@ public:
 		, Crc()
 	{}
 
+#if defined(EEPROM_RAM_DATA_SIZE)
+	const uint16_t GetStartAddress()
+	{
+		return StartBlockAddress;
+	}
+#endif
+
 	/// <summary>
 	/// Reads the declared SizeBytes into target array.
 	/// </summary>
