@@ -29,8 +29,6 @@ private:
 	static const uint8_t CrcSize = 1;
 
 public:
-	bool bullshit = false;
-
 	static constexpr uint16_t GetUsedBlockCount()
 	{
 		// CounterSize bytes for counter, 1 byte for CRC times Option.
@@ -51,7 +49,6 @@ public:
 public:
 	void Initialize()
 	{
-		bullshit = true;
 		if (!ValidateCounterMask())
 		{
 			for (uint8_t i = 0; i < CounterSize; i++)
