@@ -47,20 +47,6 @@ public:
 		}
 	}
 
-	/*static bool IsBusy()
-	{
-		for (uint16_t i = 0; i < EEPROM.length(); i++)
-		{
-			EEPROM.update(i, UINT8_MAX);
-		}
-	}*/
-
-	//static void WaitReady()
-	//{
-	//	// Wait for completion of write.
-	//	while (EECR & (1 << EEPE));
-	//}
-
 #if defined(EEPROM_BOUNDS_CHECK)
 private:
 	void CheckBounds(int offset)
