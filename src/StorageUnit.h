@@ -1,10 +1,9 @@
 #ifndef _STORAGE_UNIT_
 #define _STORAGE_UNIT_
 
-#include <EmbeddedEEPROM.h>
-#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega328p__) || defined(__AVR_atmega328p__) || defined(__AVR_ATtiny85__)
-
-#include <EmbeddedCrc.h>
+#include "EmbeddedStorageBase\EmbeddedEEPROM.h"
+#if defined(EMBEDDED_EEPROM_STORAGE)
+#include "EmbeddedStorageBase\EmbeddedCrc.h"
 
 /// <summary>
 /// CRC checked EEPROM storage unit.
@@ -28,7 +27,7 @@ public:
 	}
 
 public:
-	StorageUnit(const uint16_t startBlockAddress)
+	StorageUnit(const uint16_t startBlockAddress = 0)
 		: EmbeddedEEPROM(startBlockAddress)
 		, Crc()
 	{}

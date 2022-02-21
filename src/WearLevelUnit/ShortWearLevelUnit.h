@@ -1,21 +1,15 @@
-#ifndef _LONG_WEAR_LEVEL_UNIT_
-#define _LONG_WEAR_LEVEL_UNIT_
+#ifndef _SHORT_WEAR_LEVEL_UNIT_
+#define _SHORT_WEAR_LEVEL_UNIT_
 
-#include <EmbeddedEEPROM.h>
-#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega328p__) || defined(__AVR_atmega328p__) || defined(__AVR_ATtiny85__)
-
-#include <EmbeddedCrc.h>
-
-
-//#define WEAR_LEVEL_DEBUG
-
+#include "BaseWearLevelUnit.h"
+#if defined(EMBEDDED_EEPROM_STORAGE)
 
 /// <summary>
-/// Wear levelling long options.
+/// Wear levelling short options.
 /// 2 blocks can count up to 17 with no erasures.
 /// For smaller options, use WearLevelUnit<WearLevelShort>.
 /// </summary>
-enum WearLevelLong
+enum WearLevelShort
 {
 	x10 = 10,
 	x11 = 11,
@@ -34,17 +28,16 @@ enum WearLevelLong
 /// </summary>
 /// <param name="SizeBytes">Data size in bytes.</param>
 /// <param name="Option">WearLevel option, from 10 to 18.</param>
-/// <param name="Key">Storage cryptographic salt key.
+/// <param name="Key">Storage cryptographic salt key. Defaults to SizeBites + Option.
 ///  Changing the key invalidates any previous data.</param>
-template<const uint16_t SizeBytes, const WearLevelLong Option = WearLevelLong::x10, const uint8_t Key = SizeBytes>
-class LongWearLevelUnit : private EmbeddedEEPROM
+template<const uint16_t SizeBytes,
+	const WearLevelShort Option = WearLevelShort::x10,
+	const uint8_t Key = SizeBytes + (uint8_t)Option + sizeof(uint16_t)>
+	class ShortWearLevelUnit
+	: public BaseWearLevelUnit<SizeBytes, Key, sizeof(uint16_t), (uint8_t)Option>
 {
 private:
-	EmbeddedCrc<Key> Crc;
-
-	static const uint8_t CounterSize = sizeof(uint16_t);
-
-	enum CounterEnum
+	enum CounterEnum : uint16_t
 	{
 		c0 = 0b1111111111111111,
 		c1 = 0b0111111111111111,
@@ -66,70 +59,22 @@ private:
 	};
 
 public:
-	static constexpr GetUsedBlockCount()
+	ShortWearLevelUnit(const uint16_t startBlockAddress)
+		: BaseWearLevelUnit<SizeBytes, Key, sizeof(uint16_t), (uint8_t)Option>(startBlockAddress)
 	{
-		// 2 bytes for counter, 1 byte for CRC times Option.
-		return 2 + ((int)Option * (SizeBytes + 1));
-	}
-
-public:
-	LongWearLevelUnit(const uint16_t startBlockAddress)
-		: EmbeddedEEPROM(startBlockAddress)
-		, Crc()
-	{
-		if (!ValidateCounterMask())
-		{
-			ClearByteToOnes(0);
-			ClearByteToOnes(1);
-		}
-	}
-
-#if defined(WEAR_LEVEL_DEBUG)
-	const uint8_t DebugCounter()
-	{
-		return GetCurrentCounter();
-	}
-#endif
-
-	/// <summary>
-	/// Reads the declared SizeBytes into target array.
-	/// </summary>
-	/// <param name="target">Target array.</param>
-	/// <returns>True if CRC matches.</returns>
-	const bool ReadData(uint8_t* target)
-	{
-		uint8_t counter = GetCurrentCounter();
-		uint16_t offset = 1 + ((uint16_t)counter * (SizeBytes + 1));
-
-		for (uint16_t i = 0; i < SizeBytes; i++)
-		{
-			target[i] = ReadBlock(offset + i);
-		}
-
-		return Crc.GetCrc(target, SizeBytes, counter) == ReadBlock(offset + SizeBytes);
-	}
-
-
-	/// <summary>
-	/// Writes the declared SizeBytes from source array.
-	/// </summary>
-	/// <param name="source">Source array.</param>
-	void WriteData(const uint8_t* source)
-	{
-		uint8_t counter = IncrementCounter();
-		uint16_t offset = 1 + ((uint16_t)counter * (SizeBytes + 1));
-
-		for (uint16_t i = 0; i < SizeBytes; i++)
-		{
-			WriteBlock(offset + i, source[i]);
-		}
-
-		WriteBlock(offset + SizeBytes, Crc.GetCrc(source, SizeBytes, counter));
+		Initialize();
 	}
 
 private:
+	const uint16_t GetMask()
+	{
+		uint16_t mask = ReadBlock(0);
+		mask <<= 8;
+		mask += ReadBlock(1);
 
-private:
+		return mask;
+	}
+
 	const uint16_t GetMask(const uint8_t counter)
 	{
 		switch (counter)
@@ -173,12 +118,10 @@ private:
 		}
 	}
 
-	const uint8_t GetCurrentCounter()
+protected:
+	const uint8_t GetCurrentCounter() final
 	{
-		uint16_t mask = ReadBlock(0) << 8;
-		mask += ReadBlock(1);
-
-		switch (mask)
+		switch (GetMask())
 		{
 		case CounterEnum::c0:
 			return 0;
@@ -224,7 +167,7 @@ private:
 	/// From 0 to 18 (Option).
 	/// </summary>
 	/// <returns>Current Counter</returns>
-	const uint8_t IncrementCounter()
+	const uint8_t IncrementCounter() final
 	{
 		uint8_t counter = GetCurrentCounter();
 		if (counter + 1 >= Option)
@@ -236,7 +179,7 @@ private:
 		else
 		{
 			counter++;
-			uint16_t mask = GetMask(counter);
+			const uint16_t mask = GetMask(counter);
 			ProgramZeroBitsToZero(0, mask >> 8);
 			ProgramZeroBitsToZero(1, mask);
 		}
@@ -244,12 +187,9 @@ private:
 		return counter;
 	}
 
-	const bool ValidateCounterMask()
+	const bool ValidateCounterMask() final
 	{
-		uint16_t mask = ReadBlock(0) << 8;
-		mask += ReadBlock(1);
-
-		switch (mask)
+		switch (GetMask())
 		{
 		case CounterEnum::c0:
 		case CounterEnum::c1:
@@ -268,7 +208,7 @@ private:
 		case CounterEnum::c14:
 		case CounterEnum::c15:
 		case CounterEnum::c16:
-			return true;
+			return GetCurrentCounter() <= Option;
 		default:
 			return false;
 		}

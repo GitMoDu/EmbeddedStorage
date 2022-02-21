@@ -1,8 +1,7 @@
 #ifndef _EMBEDDED_EEPROM_
 #define _EMBEDDED_EEPROM_
 
-#include <stdint.h>
-#include <EEPROM.h>
+
 
 // #define EEPROM_BOUNDS_CHECK
 // Checks if the write address is within Unit space, at run time.
@@ -16,11 +15,12 @@
 #endif
 
 
-#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega328p__) || defined(__AVR_atmega328p__)
-#elif defined(__AVR_ATtiny85__)
-#endif
+#include <stdint.h>
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega328p__) || defined(__AVR_atmega328p__) || defined(__AVR_ATtiny85__)
+#define EMBEDDED_EEPROM_STORAGE
+#include <EEPROM.h>
+
 /// <summary>
 /// Interfaces the Arduino EEPROM,
 ///  with a defined set of operations for use by child classes.
@@ -46,6 +46,20 @@ public:
 			EEPROM.update(i, UINT8_MAX);
 		}
 	}
+
+	/*static bool IsBusy()
+	{
+		for (uint16_t i = 0; i < EEPROM.length(); i++)
+		{
+			EEPROM.update(i, UINT8_MAX);
+		}
+	}*/
+
+	//static void WaitReady()
+	//{
+	//	// Wait for completion of write.
+	//	while (EECR & (1 << EEPE));
+	//}
 
 #if defined(EEPROM_BOUNDS_CHECK)
 private:
@@ -78,7 +92,11 @@ protected:
 
 	// Arduino EEPROMWearLevel Library flash twidling bits.
 	// https://github.com/PRosenb/EEPROMWearLevel/blob/master/src/avr/EEPROMWearLevelAvr.cpp
-	void ProgramZeroBitsToZero(const uint16_t offset, const uint8_t byteWithZeros) {
+	void ProgramZeroBitsToZero(const uint16_t offset, const uint8_t byteWithZeros)
+	{
+		//// Wait for completion of any pending operations.
+		//while (EECR & (1 << EEPE));
+
 		// EEPROM Mode Bits.
 		// EEPM1.0 = 0 0 - Mode 0 Erase & Write in one operation.
 		// EEPM1.0 = 0 1 - Mode 1 Erase only.
@@ -110,7 +128,11 @@ protected:
 		while (EECR & (1 << EEPE));
 	}
 
-	void ClearByteToOnes(const uint16_t offset) {
+	void ClearByteToOnes(const uint16_t offset)
+	{
+		// Wait for completion of any pending operations.
+		while (EECR & (1 << EEPE));
+
 		// EEPROM Mode Bits.
 		// EEPM1.0 = 0 0 - Mode 0 Erase & Write in one operation.
 		// EEPM1.0 = 0 1 - Mode 1 Erase only.
@@ -136,6 +158,9 @@ protected:
 		// EEPE = 1 - Write Enable.
 		EECR |= (1 << EEPE);
 		SREG = u8SREG;
+
+		// Wait for completion of any pending operations.
+		while (EECR & (1 << EEPE));
 	}
 };
 #endif
