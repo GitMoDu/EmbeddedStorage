@@ -41,3 +41,6 @@ Examples/ExampleStorage/Debug/
 Examples/ExampleWearLevel/.vs
 Examples/ExampleWearLevel/__vm
 Examples/ExampleWearLevel/Release
+Examples/UnitTests/.vs/
+Examples/UnitTests/__vm/
+Examples/UnitTests/Release/
