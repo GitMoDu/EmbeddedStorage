@@ -57,7 +57,7 @@ public:
 
 protected:
 	virtual const uint8_t GetPartitionsCount() { return 2; }
-	virtual const uint8_t GetPartitionSize(const uint8_t partition)
+	virtual const uint16_t GetPartitionSize(const uint8_t partition)
 	{
 		switch (partition)
 		{
