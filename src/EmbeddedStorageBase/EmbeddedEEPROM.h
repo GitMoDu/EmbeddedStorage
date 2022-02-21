@@ -8,6 +8,10 @@
 // Disabled by default, for performance.
 // Enable for validation, and supply optional Macro for error handling. 
 
+// #define EEPROM_RAM_DATA_SIZE 
+// Uses memory array to mock EEPROM.
+// Disabled by default, used only for validation.
+
 #if defined(EEPROM_BOUNDS_CHECK)
 #define EEPROM_ON_ERROR(address) Serial.println(F("EEPROM Error"))
 #else
@@ -19,7 +23,13 @@
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega328p__) || defined(__AVR_atmega328p__) || defined(__AVR_ATtiny85__)
 #define EMBEDDED_EEPROM_STORAGE
+#if defined(EEPROM_RAM_DATA_SIZE)
+static uint8_t FakeEEPROM[EEPROM_RAM_DATA_SIZE];
+#define EEPROM_SIZE() EEPROM_RAM_DATA_SIZE
+#else
 #include <EEPROM.h>
+#define EEPROM_SIZE() EEPROM.length()
+#endif
 
 /// <summary>
 /// Interfaces the Arduino EEPROM,
@@ -41,9 +51,13 @@ public:
 	/// </summary>
 	static void EraseEEPROM()
 	{
-		for (uint16_t i = 0; i < EEPROM.length(); i++)
+		for (uint16_t i = 0; i < EEPROM_SIZE(); i++)
 		{
+#if defined(EEPROM_RAM_DATA_SIZE)
+			FakeEEPROM[i] = UINT8_MAX;
+#else
 			EEPROM.update(i, UINT8_MAX);
+#endif
 		}
 	}
 
@@ -51,8 +65,8 @@ public:
 private:
 	void CheckBounds(int offset)
 	{
-		if (StartBlockAddress >= EEPROM.length()
-			|| (StartBlockAddress + offset) >= EEPROM.length())
+		if (StartBlockAddress >= EEPROM_SIZE()
+			|| (StartBlockAddress + offset) >= EEPROM_SIZE())
 		{
 			EEPROM_ON_ERROR(StartBlockAddress + offset);
 		}
@@ -65,7 +79,11 @@ protected:
 #if defined(EEPROM_BOUNDS_CHECK)
 		CheckBounds(offset);
 #endif
+#if defined(EEPROM_RAM_DATA_SIZE)
+		FakeEEPROM[StartBlockAddress + offset] = block;
+#else
 		EEPROM.update(StartBlockAddress + offset, block);
+#endif
 	}
 
 	const uint8_t ReadBlock(const uint16_t offset)
@@ -73,13 +91,20 @@ protected:
 #if defined(EEPROM_BOUNDS_CHECK)
 		CheckBounds(offset);
 #endif
+#if defined(EEPROM_RAM_DATA_SIZE)
+		return FakeEEPROM[StartBlockAddress + offset];
+#else
 		return EEPROM[StartBlockAddress + offset];
+#endif
 	}
 
 	// Arduino EEPROMWearLevel Library flash twidling bits.
 	// https://github.com/PRosenb/EEPROMWearLevel/blob/master/src/avr/EEPROMWearLevelAvr.cpp
 	void ProgramZeroBitsToZero(const uint16_t offset, const uint8_t byteWithZeros)
 	{
+#if defined(EEPROM_RAM_DATA_SIZE)
+		FakeEEPROM[StartBlockAddress + offset] = byteWithZeros;
+#else
 		//// Wait for completion of any pending operations.
 		//while (EECR & (1 << EEPE));
 
@@ -112,10 +137,14 @@ protected:
 
 		// Wait for completion of write.
 		while (EECR & (1 << EEPE));
+#endif
 	}
 
 	void ClearByteToOnes(const uint16_t offset)
 	{
+#if defined(EEPROM_RAM_DATA_SIZE)
+		FakeEEPROM[StartBlockAddress + offset] = UINT8_MAX;
+#else
 		// Wait for completion of any pending operations.
 		while (EECR & (1 << EEPE));
 
@@ -147,6 +176,7 @@ protected:
 
 		// Wait for completion of any pending operations.
 		while (EECR & (1 << EEPE));
+#endif
 	}
 };
 #endif
