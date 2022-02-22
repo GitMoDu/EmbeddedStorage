@@ -105,7 +105,7 @@ void setup()
 	Serial.print(TestUnitsSize);
 	Serial.println(F(" bytes"));
 
-	if (TestUnitsSize > EEPROM_RAM_DATA_SIZE)
+	if (TestUnitsSize > EEPROM_SIZE)
 	{
 		Serial.println(F("\tTest Units don't fit in RAM (fake EEPROM)."));
 		OnFail();
