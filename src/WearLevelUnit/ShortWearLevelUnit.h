@@ -66,7 +66,7 @@ public:
 	}
 
 #if defined(WEAR_LEVEL_DEBUG)
-	const uint64_t DebugMask()
+	const uint16_t DebugMask()
 	{
 		return GetMask();
 	}

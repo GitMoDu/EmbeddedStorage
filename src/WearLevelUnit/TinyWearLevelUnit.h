@@ -58,7 +58,7 @@ public:
 	}
 
 #if defined(WEAR_LEVEL_DEBUG)
-	virtual const uint64_t DebugMask()
+	const uint8_t DebugMask()
 	{
 		return GetMask();
 	}
