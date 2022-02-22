@@ -47,6 +47,9 @@ public:
 	{}
 
 protected:
+	/// <summary>
+	/// Ensure the current counter in this Unit is according to spec.
+	/// </summary>
 	void Initialize()
 	{
 		if (!ValidateCounterMask())
