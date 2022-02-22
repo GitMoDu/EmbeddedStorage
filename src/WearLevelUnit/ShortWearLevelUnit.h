@@ -58,6 +58,12 @@ private:
 		c16 = 0b0000000000000000
 	};
 
+	union ATUI16
+	{
+		uint16_t Value;
+		uint8_t Array[sizeof(uint16_t)];
+	} ATUI;
+
 public:
 	ShortWearLevelUnit(const uint16_t startBlockAddress)
 		: BaseWearLevelUnit<SizeBytes, Key, sizeof(uint16_t), (uint8_t)Option>(startBlockAddress)
@@ -75,11 +81,10 @@ public:
 private:
 	const uint16_t GetMask()
 	{
-		uint16_t mask = ReadBlock(0);
-		mask <<= 8;
-		mask += ReadBlock(1);
+		ATUI.Array[0] = ReadBlock(0);
+		ATUI.Array[1] = ReadBlock(1);
 
-		return mask;
+		return ATUI.Value;
 	}
 
 	const uint16_t GetMask(const uint8_t counter)
@@ -186,9 +191,16 @@ protected:
 		else
 		{
 			counter++;
-			const uint16_t mask = GetMask(counter);
-			ProgramZeroBitsToZero(0, mask >> 8);
-			ProgramZeroBitsToZero(1, mask);
+			ATUI.Value = GetMask(counter);
+
+			if (ATUI.Array[0] != ReadBlock(0))
+			{
+				ProgramZeroBitsToZero(0, ATUI.Array[0]);
+			}
+			if (ATUI.Array[1] != ReadBlock(1))
+			{
+				ProgramZeroBitsToZero(1, ATUI.Array[1]);
+			}
 		}
 
 		return counter;
