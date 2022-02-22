@@ -63,20 +63,35 @@ protected:
 using TestUnitTiny2 = TinyWearLevelUnit<sizeof(uint8_t), WearLevelTiny::x2>;
 using TestUnitTiny9 = TinyWearLevelUnit<sizeof(uint16_t), WearLevelTiny::x9>;
 using TestUnitShort10 = ShortWearLevelUnit<sizeof(uint8_t), WearLevelShort::x10>;
-using TestUnitShort18 = ShortWearLevelUnit<sizeof(uint8_t), WearLevelShort::x17>;
+using TestUnitShort17 = ShortWearLevelUnit<sizeof(uint8_t), WearLevelShort::x17>;
 
 StorageUnit<1> StorageZero(0);
 
 TestUnitTiny2 Tiny2(StorageZero.GetStartAddress() + StorageZero.GetUsedBlockCount());
 TestUnitTiny9 Tiny9(Tiny2.GetStartAddress() + Tiny2.GetUsedBlockCount());
 TestUnitShort10 Short10(Tiny9.GetStartAddress() + Tiny9.GetUsedBlockCount());
-TestUnitShort18 Short17(Short10.GetStartAddress() + Short10.GetUsedBlockCount());
+TestUnitShort17 Short17(Short10.GetStartAddress() + Short10.GetUsedBlockCount());
 
 static const uint16_t TestUnitsSize = Short17.GetStartAddress() + Short17.GetUsedBlockCount();
 
 
 void loop()
 {
+}
+
+void OnFail()
+{
+	Serial.println();
+	Serial.println();
+	Serial.println();
+	Serial.println();
+	Serial.println(F("--------------------"));
+
+#if defined(EEPROM_RAM_DATA_SIZE)
+	Serial.println(F("Erasing EEPROM."));
+	EmbeddedEEPROM::EraseEEPROM();
+#endif
+	while (true);;
 }
 
 void setup()
@@ -86,9 +101,6 @@ void setup()
 	Serial.println();
 	Serial.println();
 	Serial.println(F("Embedded Storage Unit Test Start"));
-	Serial.println();
-	Serial.println();
-
 	Serial.print(F("\tTest Units size\t"));
 	Serial.print(TestUnitsSize);
 	Serial.println(F(" bytes"));
@@ -96,7 +108,7 @@ void setup()
 	if (TestUnitsSize > EEPROM_RAM_DATA_SIZE)
 	{
 		Serial.println(F("\tTest Units don't fit in RAM (fake EEPROM)."));
-		return;
+		OnFail();
 	}
 	Serial.println();
 
@@ -105,18 +117,11 @@ void setup()
 
 	TestStorageUnit();
 
-	TestUnitWearLevelTiny();
+	TestUnitWearGeneric<TestUnitTiny2>("Tiny2", WearLevelTiny::x2, Tiny2);
+	TestUnitWearGeneric<TestUnitTiny9>("Tiny9", WearLevelTiny::x9, Tiny9);
 
-	TestUnitWearLevelShort();
-	Serial.println();
-	Serial.println(F("Integration tests passed."));
-
-	//TODO: Test Wear level
-	// - counter bit fiddling.
-	// - counter rolling.
-	// - counter range [0;Option].
-	// - counter holes.
-
+	TestUnitWearGeneric<TestUnitShort10>("Short10", WearLevelShort::x10, Short10);
+	TestUnitWearGeneric<TestUnitShort17>("Short17", WearLevelShort::x17, Short17);
 
 	Serial.println();
 	Serial.println();
@@ -135,7 +140,9 @@ void setup()
 
 void TestStorageUnit()
 {
-	Serial.println(F("Testing Storage Unit."));
+	Serial.println(F("Testing Storage Unit:"));
+
+	EmbeddedEEPROM::EraseEEPROM();
 
 	const uint8_t testValue = 123;
 	uint8_t value = testValue;
@@ -145,75 +152,72 @@ void TestStorageUnit()
 	if (!StorageZero.ReadData(&value) || value != testValue)
 	{
 		Serial.println(F("\tStorage Unit invalidated."));
-		return;
+		OnFail();
 	}
 
-	Serial.println(F("\tStorage Unit validated."));
+	Serial.println(F("\tValidated."));
 }
 
-void TestUnitWearLevelTiny()
+
+template<class UnitType>
+void TestUnitWearGeneric(String name, const uint8_t option, UnitType unit)
 {
-	Serial.println(F("Testing Wear Level Tiny Unit:"));
+	Serial.print(F("Testing Wear Level "));
+	Serial.print(name);
+	Serial.println(F(" Unit:"));
+
+	EmbeddedEEPROM::EraseEEPROM();
+	if (unit.DebugCounter() != 0)
+	{
+		Serial.print(F("\tCounter erased EEPROM invalidated: "));
+		Serial.println(unit.DebugCounter());
+		OnFail();
+	}
+
+	unit.ResetCounter();
+	if (unit.DebugCounter() != (option - 1))
+	{
+		Serial.print(F("\tCounter initialize invalidated: "));
+		Serial.println(unit.DebugCounter());
+		OnFail();
+	}
 
 	const uint8_t testValue = 123;
-	uint8_t value = testValue;
-	Tiny2.WriteData(&value);
-	Tiny9.WriteData(&value);
+	uint8_t value = 0;
 
-	for (uint8_t i = 0; i < WearLevelTiny::x2; i++)
+	for (uint8_t i = 0; i < option; i++)
 	{
-		value = 0;
-		if (!Tiny2.ReadData(&value) || value != testValue)
+		value = testValue + i;
+		unit.WriteData(&value);
+
+		if (unit.DebugCounter() != i)
 		{
-			Serial.println(F("\tWear Level Tiny x2 invalidated."));
-			return;
+			Serial.print(F("\tCounter iterator ("));
+			Serial.print(i);
+			Serial.print(F(" != "));
+			Serial.print(unit.DebugCounter());
+			Serial.println(F(") invalidated."));
+			OnFail();
+		}
+
+		value = 0;
+		if (!unit.ReadData(&value) || value != (testValue + i))
+		{
+			Serial.println(F("\tReadback invalidated."));
+			OnFail();
 		}
 	}
 
-
-	for (uint8_t i = 0; i < WearLevelTiny::x9; i++)
+	// One more write to force to counter to cycle back to zero.
+	unit.WriteData(&value);
+	if (unit.DebugCounter() != 0)
 	{
-		value = 0;
-		if (!Tiny9.ReadData(&value) || value != testValue)
-		{
-			Serial.println(F("\tWear Level Tiny x9 invalidated."));
-			return;
-		}
+		Serial.print(F("\tCounter end invalidated:"));
+		Serial.print(unit.DebugCounter());
+		OnFail();
 	}
 
-	Serial.println(F("\tWear Level Tiny validated."));
-}
-
-void TestUnitWearLevelShort()
-{
-	Serial.println(F("Testing Wear Level Short Unit:"));
-
-	const uint8_t testValue = 123;
-	uint8_t value = testValue;
-	Short10.WriteData(&value);
-	Short17.WriteData(&value);
-
-	for (uint8_t i = 0; i < WearLevelShort::x10; i++)
-	{
-		value = 0;
-		if (!Short10.ReadData(&value) || value != testValue)
-		{
-			Serial.println(F("\tWear Level Short x10 invalidated."));
-			return;
-		}
-	}
-
-	for (uint8_t i = 0; i < WearLevelShort::x17; i++)
-	{
-		value = 0;
-		if (!Short17.ReadData(&value) || value != testValue)
-		{
-			Serial.println(F("\tWear Level Short x17 invalidated."));
-			return;
-		}
-	}
-
-	Serial.println(F("\tWear Level Short validated."));
+	Serial.println(F("\tValidated."));
 }
 
 void TestStorageAttributor()
@@ -222,7 +226,7 @@ void TestStorageAttributor()
 	if (!Attributor.Validate())
 	{
 		Serial.println(F("\tAttributor invalidated."));
-		return;
+		OnFail();
 	}
 
 	Serial.println(F("\tUsed\tFree\tTotal"));
@@ -236,17 +240,20 @@ void TestStorageAttributor()
 	if (Attributor.GetUsedSpace() != (StorageUnitSizes::Struct1Size + StorageUnitSizes::Struct2Size + StorageUnitSizes::Struct3Size))
 	{
 		Serial.println(F("\tAttributor.GetUsedSpace() failed."));
+		OnFail();
 	}
 
-	if (Attributor.GetTotalSpace() != EEPROM_RAM_DATA_SIZE)
+	if (Attributor.GetTotalSpace() != EEPROM_SIZE())
 	{
 		Serial.println(F("\tAttributor.GetTotalSpace() failed."));
+		OnFail();
 	}
 
 	if (Attributor.GetTotalSpace() - Attributor.GetUsedSpace() != Attributor.GetFreeSpace())
 	{
 		Serial.println(F("\tAttributor.GetFreeSpace() failed."));
+		OnFail();
 	}
-	Serial.println(F("\tAttributor validated."));
+	Serial.println(F("\tValidated."));
 	Serial.println();
 }
