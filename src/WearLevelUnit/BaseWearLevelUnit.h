@@ -74,6 +74,11 @@ public:
 	{
 		return GetCurrentCounter();
 	}
+
+	const uint8_t GetCounterSize()
+	{
+		return CounterSize;
+	}
 #endif
 
 #if defined(EEPROM_BOUNDS_CHECK)

@@ -65,6 +65,13 @@ public:
 		Initialize();
 	}
 
+#if defined(WEAR_LEVEL_DEBUG)
+	const uint64_t DebugMask()
+	{
+		return GetMask();
+	}
+#endif
+
 private:
 	const uint16_t GetMask()
 	{
