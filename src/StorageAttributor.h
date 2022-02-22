@@ -19,7 +19,7 @@ public:
 
 	const bool Validate()
 	{
-		return GetHighestBlockSize() < EEPROM_SIZE();
+		return GetHighestBlockSize() < EEPROM_SIZE;
 	}
 
 	const uint16_t GetUsedSpace()
@@ -29,12 +29,12 @@ public:
 
 	const int16_t GetFreeSpace()
 	{
-		return (int32_t)EEPROM_SIZE() - GetHighestBlockSize();
+		return (int32_t)EEPROM_SIZE - GetHighestBlockSize();
 	}
 
 	const uint16_t GetTotalSpace()
 	{
-		return EEPROM_SIZE();
+		return EEPROM_SIZE;
 	}
 
 	const uint16_t GetUnitStartAddress(const uint8_t unitIndex)

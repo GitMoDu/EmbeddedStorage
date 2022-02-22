@@ -25,10 +25,10 @@
 #define EMBEDDED_EEPROM_STORAGE
 #if defined(EEPROM_RAM_DATA_SIZE)
 static uint8_t FakeEEPROM[EEPROM_RAM_DATA_SIZE];
-#define EEPROM_SIZE() EEPROM_RAM_DATA_SIZE
+#define EEPROM_SIZE EEPROM_RAM_DATA_SIZE
 #else
 #include <EEPROM.h>
-#define EEPROM_SIZE() EEPROM.length()
+#define EEPROM_SIZE EEPROM.length()
 #endif
 
 /// <summary>
@@ -51,7 +51,7 @@ public:
 	/// </summary>
 	static void EraseEEPROM()
 	{
-		for (uint16_t i = 0; i < EEPROM_SIZE(); i++)
+		for (uint16_t i = 0; i < EEPROM_SIZE; i++)
 		{
 #if defined(EEPROM_RAM_DATA_SIZE)
 			FakeEEPROM[i] = UINT8_MAX;
@@ -65,8 +65,8 @@ public:
 private:
 	void CheckBounds(int offset)
 	{
-		if (StartBlockAddress >= EEPROM_SIZE()
-			|| (StartBlockAddress + offset) >= EEPROM_SIZE())
+		if (StartBlockAddress >= EEPROM_SIZE
+			|| (StartBlockAddress + offset) >= EEPROM_SIZE)
 		{
 			EEPROM_ON_ERROR(StartBlockAddress + offset);
 		}

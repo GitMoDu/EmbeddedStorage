@@ -243,7 +243,7 @@ void TestStorageAttributor()
 		OnFail();
 	}
 
-	if (Attributor.GetTotalSpace() != EEPROM_SIZE())
+	if (Attributor.GetTotalSpace() != EEPROM_SIZE)
 	{
 		Serial.println(F("\tAttributor.GetTotalSpace() failed."));
 		OnFail();
