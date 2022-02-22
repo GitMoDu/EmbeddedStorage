@@ -46,17 +46,29 @@ public:
 		, Crc()
 	{}
 
+protected:
 	void Initialize()
 	{
 		if (!ValidateCounterMask())
 		{
-			for (uint8_t i = 0; i < CounterSize; i++)
-			{
-				ProgramZeroBitsToZero(i, 0);
-			}
+			ResetCounter();
 		}
 	}
 
+#if defined(WEAR_LEVEL_DEBUG)
+public:
+#else
+protected:
+#endif
+	void ResetCounter()
+	{
+		for (uint8_t i = 0; i < CounterSize; i++)
+		{
+			ProgramZeroBitsToZero(i, 0);
+		}
+	}
+
+public:
 #if defined(WEAR_LEVEL_DEBUG)
 	const uint8_t DebugCounter()
 	{
