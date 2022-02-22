@@ -180,7 +180,7 @@ void serialEvent()
 		EmbeddedEEPROM::EraseEEPROM();
 		Serial.println(F("Done"));
 		Serial.println(F("Storage reinit."));
-		EmbeddedStorage.Initialize();
+		EmbeddedStorage.ResetCounter();
 		break;
 	case 1:
 		TestData1.Value1 = random();
