@@ -32,7 +32,7 @@ public:
 		, Crc()
 	{}
 
-#if defined(EEPROM_RAM_DATA_SIZE)
+#if defined(EEPROM_BOUNDS_CHECK)
 	const uint16_t GetStartAddress()
 	{
 		return StartBlockAddress;
