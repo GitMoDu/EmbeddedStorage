@@ -36,11 +36,8 @@ enum StorageUnitSizes
 };
 
 
-class ExampleStorageAttributor : public StorageAttributor
+class MockStorageAttributor : public StorageAttributor
 {
-public:
-	ExampleStorageAttributor() : StorageAttributor() {}
-
 protected:
 	virtual const uint8_t GetPartitionsCount() { return StorageUnits::UnitCount; }
 	virtual const uint16_t GetPartitionSize(const uint8_t partition)
@@ -57,20 +54,46 @@ protected:
 			return 0;
 		}
 	}
-} Attributor;
+} MockAttributor;
+
+static const uint16_t MockUnitsSize = StorageUnitSizes::Struct1Size + StorageUnitSizes::Struct2Size + StorageUnitSizes::Struct3Size;
 
 
+using TestUnitStorage = StorageUnit<1>;
 using TestUnitTiny2 = TinyWearLevelUnit<sizeof(uint8_t), WearLevelTiny::x2>;
 using TestUnitTiny9 = TinyWearLevelUnit<sizeof(uint16_t), WearLevelTiny::x9>;
 using TestUnitShort10 = ShortWearLevelUnit<sizeof(uint8_t), WearLevelShort::x10>;
 using TestUnitShort17 = ShortWearLevelUnit<sizeof(uint8_t), WearLevelShort::x17>;
 
-StorageUnit<1> StorageZero(0);
-
+TestUnitStorage StorageZero(0);
 TestUnitTiny2 Tiny2(StorageZero.GetStartAddress() + StorageZero.GetUsedBlockCount());
 TestUnitTiny9 Tiny9(Tiny2.GetStartAddress() + Tiny2.GetUsedBlockCount());
 TestUnitShort10 Short10(Tiny9.GetStartAddress() + Tiny9.GetUsedBlockCount());
 TestUnitShort17 Short17(Short10.GetStartAddress() + Short10.GetUsedBlockCount());
+
+class TestUnitsStorageAttributor : public StorageAttributor
+{
+protected:
+	virtual const uint8_t GetPartitionsCount() { return 5; }
+	virtual const uint16_t GetPartitionSize(const uint8_t partition)
+	{
+		switch (partition)
+		{
+		case 0:
+			return TestUnitStorage::GetUsedBlockCount();
+		case 1:
+			return TestUnitTiny2::GetUsedBlockCount();
+		case 2:
+			return TestUnitTiny9::GetUsedBlockCount();
+		case 3:
+			return TestUnitShort10::GetUsedBlockCount();
+		case 4:
+			return TestUnitShort17::GetUsedBlockCount();
+		default:
+			return 0;
+		}
+	}
+} TestAttributor;
 
 static const uint16_t TestUnitsSize = Short17.GetStartAddress() + Short17.GetUsedBlockCount();
 
@@ -96,24 +119,28 @@ void OnFail()
 
 void setup()
 {
+	delay(1000);
 	Serial.begin(SERIAL_BAUD_RATE);
 
 	Serial.println();
 	Serial.println();
 	Serial.println(F("Embedded Storage Unit Test Start"));
-	Serial.print(F("\tTest Units size\t"));
-	Serial.print(TestUnitsSize);
-	Serial.println(F(" bytes"));
+	Serial.println();
 
 	if (TestUnitsSize > EEPROM_SIZE)
 	{
 		Serial.println(F("\tTest Units don't fit in RAM (fake EEPROM)."));
+		Serial.print(F("\tTest Units size\t"));
+		Serial.print(TestUnitsSize);
+		Serial.println(F(" bytes"));
 		OnFail();
 	}
 	Serial.println();
 
 
-	TestStorageAttributor();
+	TestStorageAttributor("Mock", MockAttributor, MockUnitsSize);
+
+	TestStorageAttributor("TestUnits", TestAttributor, TestUnitsSize);
 
 	TestStorageUnit();
 
@@ -220,38 +247,48 @@ void TestUnitWearGeneric(String name, const uint8_t option, UnitType unit)
 	Serial.println(F("\tValidated."));
 }
 
-void TestStorageAttributor()
+void TestStorageAttributor(String name, StorageAttributor& at, const uint16_t expectedSize)
 {
-	Serial.println(F("Testing Storage Attributor:"));
-	if (!Attributor.Validate())
+	Serial.print(F("Testing "));
+	Serial.print(name);
+	Serial.println(F(" Storage Attributor:"));
+	if (!at.Validate())
 	{
-		Serial.println(F("\tAttributor invalidated."));
+		Serial.print('\t');
+		Serial.print(name);
+		Serial.println(F(" Attributor invalidated."));
 		OnFail();
 	}
 
 	Serial.println(F("\tUsed\tFree\tTotal"));
 	Serial.print('\t');
-	Serial.print(Attributor.GetUsedSpace());
+	Serial.print(at.GetUsedSpace());
 	Serial.print('\t');
-	Serial.print(Attributor.GetFreeSpace());
+	Serial.print(at.GetFreeSpace());
 	Serial.print('\t');
-	Serial.println(Attributor.GetTotalSpace());
+	Serial.println(at.GetTotalSpace());
 
-	if (Attributor.GetUsedSpace() != (StorageUnitSizes::Struct1Size + StorageUnitSizes::Struct2Size + StorageUnitSizes::Struct3Size))
+	if (at.GetUsedSpace() != expectedSize)
 	{
-		Serial.println(F("\tAttributor.GetUsedSpace() failed."));
+		Serial.print('\t');
+		Serial.print(name);
+		Serial.println(F(" Attributor.GetUsedSpace() failed."));
 		OnFail();
 	}
 
-	if (Attributor.GetTotalSpace() != EEPROM_SIZE)
+	if (at.GetTotalSpace() != EEPROM_SIZE)
 	{
-		Serial.println(F("\tAttributor.GetTotalSpace() failed."));
+		Serial.print('\t');
+		Serial.print(name);
+		Serial.println(F(" Attributor.GetTotalSpace() failed."));
 		OnFail();
 	}
 
-	if (Attributor.GetTotalSpace() - Attributor.GetUsedSpace() != Attributor.GetFreeSpace())
+	if (at.GetTotalSpace() - at.GetUsedSpace() != at.GetFreeSpace())
 	{
-		Serial.println(F("\tAttributor.GetFreeSpace() failed."));
+		Serial.print('\t');
+		Serial.print(name);
+		Serial.println(F(" Attributor.GetFreeSpace() failed."));
 		OnFail();
 	}
 	Serial.println(F("\tValidated."));
