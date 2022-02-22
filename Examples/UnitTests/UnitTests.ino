@@ -71,6 +71,8 @@ TestUnitTiny9 Tiny9(Tiny2.GetStartAddress() + Tiny2.GetUsedBlockCount());
 TestUnitShort10 Short10(Tiny9.GetStartAddress() + Tiny9.GetUsedBlockCount());
 TestUnitShort17 Short17(Short10.GetStartAddress() + Short10.GetUsedBlockCount());
 
+static const uint16_t TestUnitsSize = Long33.GetStartAddress() + Long33.GetUsedBlockCount();
+
 class TestUnitsStorageAttributor : public StorageAttributor
 {
 protected:
@@ -95,7 +97,6 @@ protected:
 	}
 } TestAttributor;
 
-static const uint16_t TestUnitsSize = Short17.GetStartAddress() + Short17.GetUsedBlockCount();
 
 
 void loop()
@@ -185,6 +186,27 @@ void TestStorageUnit()
 	Serial.println(F("\tValidated."));
 }
 
+template<class UnitType>
+void PrintWearMask(String label, const uint8_t size, UnitType unit)
+{
+	const uint64_t mask = unit.DebugMask();
+	Serial.print('\t');
+	Serial.print(label);
+	Serial.print(F(" 0b"));
+	for (int8_t i = (size * 8) - 1; i >= 0; i--)
+	{
+		if (mask & ((uint64_t)1 << i))
+		{
+			Serial.print('1');
+		}
+		else
+		{
+			Serial.print('0');
+		}
+
+	}
+	Serial.println();
+}
 
 template<class UnitType>
 void TestUnitWearGeneric(String name, const uint8_t option, UnitType unit)
@@ -194,6 +216,7 @@ void TestUnitWearGeneric(String name, const uint8_t option, UnitType unit)
 	Serial.println(F(" Unit:"));
 
 	EmbeddedEEPROM::EraseEEPROM();
+	PrintWearMask<UnitType>("Erase", unit.GetCounterSize(), unit);
 	if (unit.DebugCounter() != 0)
 	{
 		Serial.print(F("\tCounter erased EEPROM invalidated: "));
@@ -202,6 +225,7 @@ void TestUnitWearGeneric(String name, const uint8_t option, UnitType unit)
 	}
 
 	unit.ResetCounter();
+	PrintWearMask<UnitType>("Reset", unit.GetCounterSize(), unit);
 	if (unit.DebugCounter() != (option - 1))
 	{
 		Serial.print(F("\tCounter initialize invalidated: "));
@@ -216,6 +240,10 @@ void TestUnitWearGeneric(String name, const uint8_t option, UnitType unit)
 	{
 		value = testValue + i;
 		unit.WriteData(&value);
+		Serial.print(F("\t"));
+		Serial.print(F("\t"));
+		Serial.print(i);
+		PrintWearMask<UnitType>("", unit.GetCounterSize(), unit);
 
 		if (unit.DebugCounter() != i)
 		{
@@ -237,6 +265,7 @@ void TestUnitWearGeneric(String name, const uint8_t option, UnitType unit)
 
 	// One more write to force to counter to cycle back to zero.
 	unit.WriteData(&value);
+	PrintWearMask<UnitType>("End", unit.GetCounterSize(), unit);
 	if (unit.DebugCounter() != 0)
 	{
 		Serial.print(F("\tCounter end invalidated:"));
