@@ -144,19 +144,19 @@ protected:
 		case CounterEnum::c9:
 			return 9;
 		case CounterEnum::c10:
-			return 10;
+			return min(10, Option - 1);
 		case CounterEnum::c11:
-			return 11;
+			return min(11, Option - 1);
 		case CounterEnum::c12:
-			return 12;
+			return min(12, Option - 1);
 		case CounterEnum::c13:
-			return 13;
+			return min(13, Option - 1);
 		case CounterEnum::c14:
-			return 14;
+			return min(14, Option - 1);
 		case CounterEnum::c15:
-			return 15;
+			return min(15, Option - 1);
 		case CounterEnum::c16:
-			return 16;
+			return min(16, Option - 1);
 		default:
 			return 0;
 		}
