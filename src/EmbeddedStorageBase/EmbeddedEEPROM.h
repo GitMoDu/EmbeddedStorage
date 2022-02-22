@@ -103,7 +103,7 @@ protected:
 	void ProgramZeroBitsToZero(const uint16_t offset, const uint8_t byteWithZeros)
 	{
 #if defined(EEPROM_RAM_DATA_SIZE)
-		FakeEEPROM[StartBlockAddress + offset] = byteWithZeros;
+		FakeEEPROM[StartBlockAddress + offset] = byteWithZeros & FakeEEPROM[StartBlockAddress + offset];
 #else
 		//// Wait for completion of any pending operations.
 		//while (EECR & (1 << EEPE));
