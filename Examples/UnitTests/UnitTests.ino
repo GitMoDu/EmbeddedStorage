@@ -5,7 +5,7 @@
 #define SERIAL_BAUD_RATE 9600
 
 
-#define EEPROM_RAM_DATA_SIZE 200
+#define EEPROM_RAM_DATA_SIZE 203
 #define EEPROM_BOUNDS_CHECK
 #define WEAR_LEVEL_DEBUG
 
@@ -64,19 +64,23 @@ using TestUnitTiny2 = TinyWearLevelUnit<sizeof(uint8_t), WearLevelTiny::x2>;
 using TestUnitTiny9 = TinyWearLevelUnit<sizeof(uint16_t), WearLevelTiny::x9>;
 using TestUnitShort10 = ShortWearLevelUnit<sizeof(uint8_t), WearLevelShort::x10>;
 using TestUnitShort17 = ShortWearLevelUnit<sizeof(uint8_t), WearLevelShort::x17>;
+using TestUnitLong18 = LongWearLevelUnit<sizeof(uint8_t), WearLevelLong::x18>;
+using TestUnitLong33 = LongWearLevelUnit<sizeof(uint8_t), WearLevelLong::x33>;
 
 TestUnitStorage StorageZero(0);
 TestUnitTiny2 Tiny2(StorageZero.GetStartAddress() + StorageZero.GetUsedBlockCount());
 TestUnitTiny9 Tiny9(Tiny2.GetStartAddress() + Tiny2.GetUsedBlockCount());
 TestUnitShort10 Short10(Tiny9.GetStartAddress() + Tiny9.GetUsedBlockCount());
 TestUnitShort17 Short17(Short10.GetStartAddress() + Short10.GetUsedBlockCount());
+TestUnitLong18 Long18(Short17.GetStartAddress() + Short17.GetUsedBlockCount());
+TestUnitLong33 Long33(Long18.GetStartAddress() + Long18.GetUsedBlockCount());
 
 static const uint16_t TestUnitsSize = Long33.GetStartAddress() + Long33.GetUsedBlockCount();
 
 class TestUnitsStorageAttributor : public StorageAttributor
 {
 protected:
-	virtual const uint8_t GetPartitionsCount() { return 5; }
+	virtual const uint8_t GetPartitionsCount() { return 7; }
 	virtual const uint16_t GetPartitionSize(const uint8_t partition)
 	{
 		switch (partition)
@@ -91,6 +95,10 @@ protected:
 			return TestUnitShort10::GetUsedBlockCount();
 		case 4:
 			return TestUnitShort17::GetUsedBlockCount();
+		case 5:
+			return TestUnitLong18::GetUsedBlockCount();
+		case 6:
+			return TestUnitLong33::GetUsedBlockCount();
 		default:
 			return 0;
 		}
@@ -150,6 +158,9 @@ void setup()
 
 	TestUnitWearGeneric<TestUnitShort10>("Short10", WearLevelShort::x10, Short10);
 	TestUnitWearGeneric<TestUnitShort17>("Short17", WearLevelShort::x17, Short17);
+
+	TestUnitWearGeneric<TestUnitLong18>("Long18", WearLevelLong::x18, Long18);
+	TestUnitWearGeneric<TestUnitLong33>("Long33", WearLevelLong::x33, Long33);
 
 	Serial.println();
 	Serial.println();
