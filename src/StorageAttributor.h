@@ -19,7 +19,7 @@ public:
 
 	const bool Validate()
 	{
-		return GetHighestBlockSize() < EEPROM_SIZE;
+		return GetHighestBlockSize() <= EEPROM_SIZE;
 	}
 
 	const uint16_t GetUsedSpace()
