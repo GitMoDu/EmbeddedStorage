@@ -31,12 +31,14 @@ Special mention for Arduino EEPROMWearLevel Library flash twidling bits.
 
   - WearLevelUnit
     - Same base features as StorageUnit.
-    - 1 byte of EEPROM overhead per level option, plus counter.
-    - 1 to 2 bytes of counter EEPROM overhead.
     - Wear levelling options start at x2. For x1 use StorageUnit.
+    - 1 byte of EEPROM overhead per level option, plus counter.
+    - 1 to 8 bytes of counter EEPROM overhead.
     - Wear level units:
-      - Tiny: from x2 to x8 levels of data. 1 extra byte of EEPROM overhead.
-      - Short: from x9 to x16 levels of data. 2 extra bytes of EEPROM overhead.
+      - Tiny: from x2 to x9 levels of data. 1 byte of EEPROM overhead.
+      - Short: from x10 to x17 levels of data. 2 bytes of EEPROM overhead.
+      - Long: from x18 to x33 levels of data. 4 bytes of EEPROM overhead.
+      - LongLong: from x34 to x65 levels of data. 8 bytes of EEPROM overhead.
 
 
 
