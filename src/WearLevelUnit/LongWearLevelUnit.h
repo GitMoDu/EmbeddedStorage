@@ -104,17 +104,13 @@ protected:
 		else if (mask > 0)
 		{
 			// Find first Zero bit from left to right.
-			uint32_t match = UINT32_MAX;
-			for (int8_t i = Counts; i > 0; i--)
+			for (uint8_t i = 0; i <= Counts; i++)
 			{
-				// Remove i bit to match and compare.
-				match &= ~((uint32_t)1 << i);
-				if (mask == match)
+				if (((uint8_t)(mask >> (Counts - i))) & 1)
 				{
-					return min(Counts - i, Option - 1);
+					return min(i - 1, Option - 1);
 				}
 			}
-
 		}
 
 		return Option - 1;
@@ -167,20 +163,27 @@ protected:
 	{
 		const uint32_t mask = GetMask();
 
-		if (mask == UINT32_MAX) {
+		if (mask == UINT32_MAX)
+		{
 			return true;
 		}
 		else if (mask > 0)
 		{
-			// Find first Zero bit from left to right.
-			uint32_t match = UINT32_MAX;
-			for (int8_t i = Counts; i > 0; i--)
+			// Find first 1 bit from left to right.
+			for (uint8_t i = 0; i <= Counts; i++)
 			{
-				// Remove i bit to match and compare.
-				match &= ~((uint32_t)1 << i);
-				if (mask == match)
+				if (((uint8_t)(mask >> (Counts - i))) & 1)
 				{
-					return GetMask(Counts - i) == match;
+					// Make sure all bits to the right are a 1.
+					for (int8_t j = i; j > 0; j--)
+					{
+						if (~((uint8_t)(mask >> j) & 1))
+						{
+							return false;
+						}
+					}
+
+					return true;
 				}
 			}
 		}
