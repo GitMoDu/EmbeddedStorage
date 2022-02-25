@@ -4,5 +4,6 @@
 #include "WearLevelUnit\TinyWearLevelUnit.h"
 #include "WearLevelUnit\ShortWearLevelUnit.h"
 #include "WearLevelUnit\LongWearLevelUnit.h"
+#include "WearLevelUnit\LongLongWearLevelUnit.h"
 
 #endif

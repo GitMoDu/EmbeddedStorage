@@ -5,7 +5,7 @@
 #define SERIAL_BAUD_RATE 9600
 
 
-#define EEPROM_RAM_DATA_SIZE 203
+#define EEPROM_RAM_DATA_SIZE 417
 #define EEPROM_BOUNDS_CHECK
 #define WEAR_LEVEL_DEBUG
 
@@ -66,6 +66,8 @@ using TestUnitShort10 = ShortWearLevelUnit<sizeof(uint8_t), WearLevelShort::x10>
 using TestUnitShort17 = ShortWearLevelUnit<sizeof(uint8_t), WearLevelShort::x17>;
 using TestUnitLong18 = LongWearLevelUnit<sizeof(uint8_t), WearLevelLong::x18>;
 using TestUnitLong33 = LongWearLevelUnit<sizeof(uint8_t), WearLevelLong::x33>;
+using TestUnitLongLong34 = LongLongWearLevelUnit<sizeof(uint8_t), WearLevelLongLong::x34>;
+using TestUnitLongLong65 = LongLongWearLevelUnit<sizeof(uint8_t), WearLevelLongLong::x65>;
 
 TestUnitStorage StorageZero(0);
 TestUnitTiny2 Tiny2(StorageZero.GetStartAddress() + StorageZero.GetUsedBlockCount());
@@ -74,13 +76,15 @@ TestUnitShort10 Short10(Tiny9.GetStartAddress() + Tiny9.GetUsedBlockCount());
 TestUnitShort17 Short17(Short10.GetStartAddress() + Short10.GetUsedBlockCount());
 TestUnitLong18 Long18(Short17.GetStartAddress() + Short17.GetUsedBlockCount());
 TestUnitLong33 Long33(Long18.GetStartAddress() + Long18.GetUsedBlockCount());
+TestUnitLongLong34 LongLong34(Long33.GetStartAddress() + Long33.GetUsedBlockCount());
+TestUnitLongLong65 LongLong65(LongLong34.GetStartAddress() + LongLong34.GetUsedBlockCount());
 
-static const uint16_t TestUnitsSize = Long33.GetStartAddress() + Long33.GetUsedBlockCount();
+static const uint16_t TestUnitsSize = LongLong65.GetStartAddress() + LongLong65.GetUsedBlockCount();
 
 class TestUnitsStorageAttributor : public StorageAttributor
 {
 protected:
-	virtual const uint8_t GetPartitionsCount() { return 7; }
+	virtual const uint8_t GetPartitionsCount() { return 9; }
 	virtual const uint16_t GetPartitionSize(const uint8_t partition)
 	{
 		switch (partition)
@@ -99,6 +103,10 @@ protected:
 			return TestUnitLong18::GetUsedBlockCount();
 		case 6:
 			return TestUnitLong33::GetUsedBlockCount();
+		case 7:
+			return TestUnitLongLong34::GetUsedBlockCount();
+		case 8:
+			return TestUnitLongLong65::GetUsedBlockCount();
 		default:
 			return 0;
 		}
@@ -161,6 +169,9 @@ void setup()
 
 	TestUnitWearGeneric<TestUnitLong18>("Long18", Long18);
 	TestUnitWearGeneric<TestUnitLong33>("Long33", Long33);
+
+	TestUnitWearGeneric<TestUnitLongLong34>("LongLong34", LongLong34);
+	TestUnitWearGeneric<TestUnitLongLong65>("LongLong65", LongLong65);
 
 	Serial.println();
 	Serial.println();
