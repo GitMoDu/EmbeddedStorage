@@ -236,11 +236,26 @@ void TestUnitWearGeneric(String name, UnitType unit)
 		OnFail();
 	}
 
+#if defined(EEPROM_RAM_DATA_SIZE)
+	FakeEEPROM[unit.GetStartAddress()] = (1 << 4);
+#else
+	EEPROM.update(unit.GetStartAddress(), (1 << 4));
+#endif
+	PrintWearMask<UnitType>("Corrupt", unit.GetCounterSize(), unit);
+	unit.DebugInitialize();
+	PrintWearMask<UnitType>("Initialized", unit.GetCounterSize(), unit);
+	if (unit.DebugCounter() != (option - 1))
+	{
+		Serial.print(F("\tCounter initialize invalidated: "));
+		Serial.println(unit.DebugCounter());
+		OnFail();
+	}
+
 	unit.ResetCounter();
 	PrintWearMask<UnitType>("Reset", unit.GetCounterSize(), unit);
 	if (unit.DebugCounter() != (option - 1))
 	{
-		Serial.print(F("\tCounter initialize invalidated: "));
+		Serial.print(F("\tCounter reset invalidated: "));
 		Serial.println(unit.DebugCounter());
 		OnFail();
 	}
