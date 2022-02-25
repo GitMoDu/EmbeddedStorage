@@ -78,6 +78,16 @@ public:
 		return GetCurrentCounter();
 	}
 
+	const uint8_t DebugOption()
+	{
+		return Option;
+	}
+
+	void DebugInitialize()
+	{
+		Initialize();
+	}
+
 	const uint8_t GetCounterSize()
 	{
 		return CounterSize;

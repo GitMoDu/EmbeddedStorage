@@ -153,14 +153,14 @@ void setup()
 
 	TestStorageUnit();
 
-	TestUnitWearGeneric<TestUnitTiny2>("Tiny2", WearLevelTiny::x2, Tiny2);
-	TestUnitWearGeneric<TestUnitTiny9>("Tiny9", WearLevelTiny::x9, Tiny9);
+	TestUnitWearGeneric<TestUnitTiny2>("Tiny2", Tiny2);
+	TestUnitWearGeneric<TestUnitTiny9>("Tiny9", Tiny9);
 
-	TestUnitWearGeneric<TestUnitShort10>("Short10", WearLevelShort::x10, Short10);
-	TestUnitWearGeneric<TestUnitShort17>("Short17", WearLevelShort::x17, Short17);
+	TestUnitWearGeneric<TestUnitShort10>("Short10", Short10);
+	TestUnitWearGeneric<TestUnitShort17>("Short17", Short17);
 
-	TestUnitWearGeneric<TestUnitLong18>("Long18", WearLevelLong::x18, Long18);
-	TestUnitWearGeneric<TestUnitLong33>("Long33", WearLevelLong::x33, Long33);
+	TestUnitWearGeneric<TestUnitLong18>("Long18", Long18);
+	TestUnitWearGeneric<TestUnitLong33>("Long33", Long33);
 
 	Serial.println();
 	Serial.println();
@@ -220,8 +220,9 @@ void PrintWearMask(String label, const uint8_t size, UnitType unit)
 }
 
 template<class UnitType>
-void TestUnitWearGeneric(String name, const uint8_t option, UnitType unit)
+void TestUnitWearGeneric(String name, UnitType unit)
 {
+	const uint8_t option = unit.DebugOption();
 	Serial.print(F("Testing Wear Level "));
 	Serial.print(name);
 	Serial.println(F(" Unit:"));
