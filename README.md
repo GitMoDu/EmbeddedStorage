@@ -11,7 +11,7 @@ Abstractions for storing, reading and managing data structs and arrays in EEPROM
   - Static setup-time address allocator, for setup with multiple units in one project.
 
 ## Dependencies:
-  - FastCRC: https://github.com/FrankBoesing/FastCRC
+  - CRC: [https://github.com/FrankBoesing/FastCRC](https://github.com/RobTillaart/CRC)
   - Arduino EEPROM
     - https://www.arduino.cc/en/Reference/EEPROM
 
