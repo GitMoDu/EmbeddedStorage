@@ -66,7 +66,7 @@ private:
 	void CheckBounds(int offset)
 	{
 		if (StartBlockAddress >= EEPROM_SIZE
-			|| (StartBlockAddress + offset) >= EEPROM_SIZE)
+			|| ((uint32_t)StartBlockAddress + offset) >= EEPROM_SIZE)
 		{
 			EEPROM_ON_ERROR(StartBlockAddress + offset);
 		}
