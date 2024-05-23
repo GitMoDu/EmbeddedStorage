@@ -39,46 +39,13 @@ struct TestStruct2
 } TestData2;
 
 
-// Define the used Storage units.
-enum StorageUnits
-{
-	Struct1,
-	Struct2,
-	UnitCount
-};
-
-using Struct1Unit = TinyWearLevelUnit<sizeof(TestStruct1), WearLevelTiny::x5>;
-using Struct2Unit = ShortWearLevelUnit<sizeof(TestStruct2), WearLevelShort::x17>;
+using Struct1Unit = TinyWearLevelUnit<0, sizeof(TestStruct1), WearLevelTiny::x5>;
+using Struct2Unit = ShortWearLevelUnit<Struct1Unit::Address() + Struct1Unit::Size(), sizeof(TestStruct2), WearLevelShort::x17>;
+static constexpr size_t InlineUsed = Struct2Unit::Address() + Struct2Unit::Size();
 
 
-/// <summary>
-/// Extend StorageAttributor to fill in the static sizes and count of units.
-/// After instatiation, static attributed addresses can be used as a constructor argument for units.
-/// </summary>
-class ExampleStorageAttributor : public StorageAttributor
-{
-public:
-	ExampleStorageAttributor() : StorageAttributor() {}
-
-protected:
-	virtual const uint8_t GetPartitionsCount() { return StorageUnits::UnitCount; }
-	virtual const uint16_t GetPartitionSize(const uint8_t partition)
-	{
-		switch (partition)
-		{
-		case Struct1:
-			return Struct1Unit::GetUsedBlockCount();
-		case Struct2:
-			return Struct2Unit::GetUsedBlockCount();
-		default:
-			return 0;
-		}
-	}
-} Attributor;
-
-
-Struct1Unit EmbeddedStorage(Attributor.GetUnitStartAddress(Struct1));
-Struct2Unit EmbeddedStorage2(Attributor.GetUnitStartAddress(Struct2));
+Struct1Unit EmbeddedStorage{};
+Struct2Unit EmbeddedStorage2{};
 
 
 void setup()
@@ -92,15 +59,15 @@ void setup()
 
 	Serial.println(F("EEPROM"));
 	Serial.println(F("Used\tFree\tTotal"));
-	Serial.print(Attributor.GetUsedSpace());
+	Serial.print(InlineUsed);
 	Serial.print('\t');
-	Serial.print(Attributor.GetFreeSpace());
+	Serial.print(EmbeddedEEPROM::Size() - InlineUsed);
 	Serial.print('\t');
-	Serial.println(Attributor.GetTotalSpace());
+	Serial.println(EmbeddedEEPROM::Size());
 	Serial.println();
 
-	Serial.print(F("EEPROM Attributor: "));
-	if (Attributor.Validate())
+	Serial.print(F("EEPROM used: "));
+	if (InlineUsed <= EmbeddedEEPROM::Size())
 	{
 		Serial.println(F("Ok."));
 	}

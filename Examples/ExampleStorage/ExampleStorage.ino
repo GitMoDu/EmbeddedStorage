@@ -26,7 +26,7 @@ struct TestStruct
 } TestData;
 
 
-StorageUnit<sizeof(TestStruct)> EmbeddedStorage(0);
+StorageUnit<0, sizeof(TestStruct)> EmbeddedStorage{};
 
 
 void setup()

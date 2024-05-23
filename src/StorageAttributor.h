@@ -1,63 +1,84 @@
 #ifndef _STORAGE_ATTRIBUTOR_h
 #define _STORAGE_ATTRIBUTOR_h
 
-#include "EmbeddedStorageBase\EmbeddedEEPROM.h"
-#if defined(EMBEDDED_EEPROM_STORAGE)
+#include <stdint.h>
+#include "VariadicParameters.h"
 
-/// <summary>
-/// Base attributor class with minimal memory footprint.
-/// A simple way to normalize EEPROM address attribuions.
-/// </summary>
-class StorageAttributor
+template<size_t...Sizes>
+struct TemplateSizeAttributor
 {
-protected:
-	virtual const uint8_t GetPartitionsCount() { return 0; }
-	virtual const uint16_t GetPartitionSize(const uint8_t partition) { return 0; }
-
-public:
-	StorageAttributor() {}
-
-	const bool Validate()
+	static constexpr uint16_t GetUsed()
 	{
-		return GetHighestBlockSize() <= EEPROM_SIZE;
+		return SizeParameter::Sum(Sizes...);
 	}
 
-	const uint16_t GetUsedSpace()
+	static constexpr size_t GetCount()
 	{
-		return GetHighestBlockSize();
+		return SizeParameter::Count<Sizes...>();
 	}
 
-	const int16_t GetFreeSpace()
+	static constexpr size_t GetAddress(const size_t index)
 	{
-		return (int32_t)EEPROM_SIZE - GetHighestBlockSize();
+		return SizeParameter::SumUpTo(index, Sizes...);
 	}
 
-	const uint16_t GetTotalSpace()
+	static constexpr size_t GetSize(const size_t index)
 	{
-		return EEPROM_SIZE;
-	}
-
-	const uint16_t GetUnitStartAddress(const uint8_t unitIndex)
-	{
-		uint16_t blockAddress = 0;
-		for (uint8_t i = 0; i < unitIndex; i++)
-		{
-			blockAddress += GetPartitionSize(i);
-		}
-
-		return blockAddress;
-	}
-private:
-	const uint16_t GetHighestBlockSize()
-	{
-		uint16_t blockAddress = 0;
-		for (uint8_t i = 0; i < GetPartitionsCount(); i++)
-		{
-			blockAddress += GetPartitionSize(i);
-		}
-
-		return blockAddress;
+		return SizeParameter::Size(index, Sizes...);
 	}
 };
-#endif
+
+
+/// <summary>
+/// Assumes StorageTypes have a ::Size static property.
+/// Assumes StorageTypes have a ::WearLevelOption static property.
+/// </summary>
+/// <typeparam name="...StorageTypes"></typeparam>
+template<typename... StorageTypes>
+struct TemplateStorageAttributor
+{
+public:
+	static constexpr uint16_t GetUsed()
+	{
+		return StorageParameter::Sum<StorageTypes...>();
+	}
+
+	static constexpr size_t GetCount()
+	{
+		return StorageParameter::Count<StorageTypes...>();
+	}
+
+	static constexpr size_t GetAddress(const size_t storageIndex)
+	{
+		return StorageParameter::SumUpTo<StorageTypes...>(storageIndex);
+	}
+
+	static constexpr size_t GetAddressByKey(const uint32_t key)
+	{
+		return StorageParameter::SumUpToKey<StorageTypes...>(key);
+	}
+
+	static constexpr size_t GetSize(const size_t storageIndex)
+	{
+		return StorageParameter::Size<StorageTypes...>(storageIndex);
+	}
+
+	static constexpr size_t GetSizeByKey(const uint32_t key)
+	{
+		return StorageParameter::SizeByKey<StorageTypes...>(key);
+	}
+
+	template<typename StorageType>
+	static constexpr size_t GetAddressByKey()
+	{
+		return GetAddressByKey(StorageType::Key);
+	}
+
+	template<typename StorageType>
+	static constexpr size_t GetSizeByKey()
+	{
+		return GetSizeByKey(StorageType::Key);
+	}
+};
+
 #endif

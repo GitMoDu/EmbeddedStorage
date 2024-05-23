@@ -2,49 +2,7 @@
 #define _LONG_LONG_WEAR_LEVEL_UNIT_
 
 #include "BaseWearLevelUnit.h"
-#if defined(EMBEDDED_EEPROM_STORAGE)
-
-
-/// <summary>
-/// Wear levelling long options.
-/// 8 blocks can count up to 65 with no erasures.
-/// For smaller options, use WearLevelUnit<WearLevelLong>.
-/// </summary>
-enum WearLevelLongLong
-{
-	x34 = 34,
-	x35 = 35,
-	x36 = 36,
-	x37 = 37,
-	x38 = 38,
-	x39 = 39,
-	x40 = 40,
-	x41 = 41,
-	x42 = 42,
-	x43 = 43,
-	x44 = 44,
-	x45 = 45,
-	x46 = 46,
-	x47 = 47,
-	x48 = 48,
-	x49 = 49,
-	x50 = 50,
-	x51 = 51,
-	x52 = 52,
-	x53 = 53,
-	x54 = 54,
-	x55 = 55,
-	x56 = 56,
-	x57 = 57,
-	x58 = 58,
-	x59 = 59,
-	x60 = 60,
-	x61 = 61,
-	x62 = 62,
-	x63 = 63,
-	x64 = 64,
-	x65 = 65
-};
+#include <WearLevelType.h>
 
 /// <summary>
 /// Wear levelled, CRC checked EEPROM storage unit.
@@ -55,15 +13,18 @@ enum WearLevelLongLong
 /// <param name="Option">WearLevel option, from 34 to 66.</param>
 /// <param name="Key">Storage cryptographic salt key. Defaults to SizeBites + Option.
 ///  Changing the key invalidates any previous data.</param>
-template<const uint16_t SizeBytes,
+template<const uint16_t Address,
+	const uint16_t DataSize,
 	const WearLevelLongLong Option = WearLevelLongLong::x34,
-	const uint8_t Key = SizeBytes + (uint8_t)Option + sizeof(uint64_t)>
-	class LongLongWearLevelUnit
-	: public BaseWearLevelUnit<SizeBytes, Key, sizeof(uint64_t), (uint8_t)Option>
+	const uint32_t Key = EmbeddedStorage::GetStorageSize(DataSize, Option)>
+class LongLongWearLevelUnit
+	: public BaseWearLevelUnit<Address, DataSize, Key, WearLevelLongLong, Option>
 {
 private:
-	uint16_t StartAddress;
+	using BaseClass = BaseWearLevelUnit<Address, DataSize, Key, WearLevelLongLong, Option>;
+	using BaseClass::Uint8Min;
 
+private:
 	union ATUI64
 	{
 		uint64_t Value;
@@ -73,12 +34,8 @@ private:
 	static const int8_t Counts = sizeof(uint64_t) * 8;
 
 public:
-	LongLongWearLevelUnit(const uint16_t startBlockAddress)
-		: BaseWearLevelUnit<SizeBytes, Key, sizeof(uint64_t), (uint8_t)Option>(startBlockAddress)
-		, StartAddress(startBlockAddress)
-	{
-		Initialize();
-	}
+	LongLongWearLevelUnit() : BaseClass()
+	{}
 
 #if defined(WEAR_LEVEL_DEBUG)
 	const uint64_t DebugMask()
@@ -90,14 +47,14 @@ public:
 private:
 	const uint64_t GetMask()
 	{
-		ATUI.Array[0] = ReadBlock(0);
-		ATUI.Array[1] = ReadBlock(1);
-		ATUI.Array[2] = ReadBlock(2);
-		ATUI.Array[3] = ReadBlock(3);
-		ATUI.Array[4] = ReadBlock(4);
-		ATUI.Array[5] = ReadBlock(5);
-		ATUI.Array[6] = ReadBlock(6);
-		ATUI.Array[7] = ReadBlock(7);
+		ATUI.Array[0] = EmbeddedEEPROM::ReadBlock(Address + 0);
+		ATUI.Array[1] = EmbeddedEEPROM::ReadBlock(Address + 1);
+		ATUI.Array[2] = EmbeddedEEPROM::ReadBlock(Address + 2);
+		ATUI.Array[3] = EmbeddedEEPROM::ReadBlock(Address + 3);
+		ATUI.Array[4] = EmbeddedEEPROM::ReadBlock(Address + 4);
+		ATUI.Array[5] = EmbeddedEEPROM::ReadBlock(Address + 5);
+		ATUI.Array[6] = EmbeddedEEPROM::ReadBlock(Address + 6);
+		ATUI.Array[7] = EmbeddedEEPROM::ReadBlock(Address + 7);
 
 		return ATUI.Value;
 	}
@@ -128,12 +85,12 @@ protected:
 			{
 				if (((uint8_t)(mask >> (Counts - i))) & 1)
 				{
-					return min(i - 1, Option - 1);
+					return Uint8Min(i - 1, (uint8_t)Option - 1);
 				}
 			}
 		}
 
-		return Option - 1;
+		return (uint8_t)Option - 1;
 	}
 
 	/// <summary>
@@ -144,55 +101,55 @@ protected:
 	const uint8_t IncrementCounter() final
 	{
 		uint8_t counter = GetCurrentCounter();
-		if (counter + 1 >= Option)
+		if (counter + 1 >= (uint8_t)Option)
 		{
 			counter = 0;
 
-			ClearByteToOnes(0);
-			ClearByteToOnes(1);
-			ClearByteToOnes(2);
-			ClearByteToOnes(3);
-			ClearByteToOnes(4);
-			ClearByteToOnes(5);
-			ClearByteToOnes(6);
-			ClearByteToOnes(7);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 0);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 1);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 2);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 3);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 4);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 5);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 6);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 7);
 		}
 		else
 		{
 			counter++;
 			ATUI.Value = GetMask(counter);
 
-			if (ATUI.Array[0] != ReadBlock(0))
+			if (ATUI.Array[0] != EmbeddedEEPROM::ReadBlock(Address + 0))
 			{
-				ProgramZeroBitsToZero(0, ATUI.Array[0]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 0, ATUI.Array[0]);
 			}
-			if (ATUI.Array[1] != ReadBlock(1))
+			if (ATUI.Array[1] != EmbeddedEEPROM::ReadBlock(Address + 1))
 			{
-				ProgramZeroBitsToZero(1, ATUI.Array[1]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 1, ATUI.Array[1]);
 			}
-			if (ATUI.Array[2] != ReadBlock(2))
+			if (ATUI.Array[2] != EmbeddedEEPROM::ReadBlock(Address + 2))
 			{
-				ProgramZeroBitsToZero(2, ATUI.Array[2]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 2, ATUI.Array[2]);
 			}
-			if (ATUI.Array[3] != ReadBlock(3))
+			if (ATUI.Array[3] != EmbeddedEEPROM::ReadBlock(Address + 3))
 			{
-				ProgramZeroBitsToZero(3, ATUI.Array[3]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 3, ATUI.Array[3]);
 			}
-			if (ATUI.Array[4] != ReadBlock(4))
+			if (ATUI.Array[4] != EmbeddedEEPROM::ReadBlock(Address + 4))
 			{
-				ProgramZeroBitsToZero(4, ATUI.Array[4]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 4, ATUI.Array[4]);
 			}
-			if (ATUI.Array[5] != ReadBlock(5))
+			if (ATUI.Array[5] != EmbeddedEEPROM::ReadBlock(Address + 5))
 			{
-				ProgramZeroBitsToZero(5, ATUI.Array[5]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 5, ATUI.Array[5]);
 			}
-			if (ATUI.Array[6] != ReadBlock(6))
+			if (ATUI.Array[6] != EmbeddedEEPROM::ReadBlock(Address + 6))
 			{
-				ProgramZeroBitsToZero(6, ATUI.Array[6]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 6, ATUI.Array[6]);
 			}
-			if (ATUI.Array[7] != ReadBlock(7))
+			if (ATUI.Array[7] != EmbeddedEEPROM::ReadBlock(Address + 7))
 			{
-				ProgramZeroBitsToZero(7, ATUI.Array[7]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 7, ATUI.Array[7]);
 			}
 		}
 
@@ -217,7 +174,7 @@ protected:
 					// Make sure all bits to the right are a 1.
 					for (int8_t j = i; j > 0; j--)
 					{
-						if (~((uint8_t)(mask >> j) & 1))
+						if (~((uint32_t)(mask >> j) & 1))
 						{
 							return false;
 						}
@@ -231,5 +188,4 @@ protected:
 		return true;
 	}
 };
-#endif
 #endif

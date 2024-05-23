@@ -2,40 +2,30 @@
 #define _TINY_WEAR_LEVEL_UNIT_
 
 #include "BaseWearLevelUnit.h"
-#if defined(EMBEDDED_EEPROM_STORAGE)
+#include <WearLevelType.h>
 
-/// <summary>
-/// Wear levelling tiny options.
-/// A single block can count up to 9 with no erasures.
-/// x1 option doesn't make use of rolling counter, use StorageUnit instead.
-/// </summary>
-enum WearLevelTiny
-{
-	x2 = 2,
-	x3 = 3,
-	x4 = 4,
-	x5 = 5,
-	x6 = 6,
-	x7 = 7,
-	x8 = 8,
-	x9 = 9
-};
+//#define WEAR_LEVEL_DEBUG
 
 /// <summary>
 /// Wear levelled, CRC checked EEPROM storage unit.
 /// Flash overhead: 1 byte for counter, 1 byte for CRC times Option.
 /// Designed for use with a single data struct or array.
 /// </summary>
-/// <param name="SizeBytes">Data size in bytes.</param>
+/// <param name="DataSize">Data size in bytes.</param>
 /// <param name="Option">WearLevel option, from 2 to 8.</param>
 /// <param name="Key">Storage cryptographic salt key.
 ///  Changing the key invalidates any previous data.</param>
-template<const uint16_t SizeBytes,
+template<const uint16_t Address,
+	const uint16_t DataSize,
 	const WearLevelTiny Option = WearLevelTiny::x2,
-	const uint8_t Key = SizeBytes + (uint8_t)Option + sizeof(uint8_t)>
-	class TinyWearLevelUnit
-	: public BaseWearLevelUnit<SizeBytes, Key, sizeof(uint8_t), (uint8_t)Option>
+	const uint32_t Key = EmbeddedStorage::GetStorageSize(DataSize, Option)>
+class TinyWearLevelUnit
+	: public BaseWearLevelUnit<Address, DataSize, Key, WearLevelTiny, Option>
 {
+private:
+	using BaseClass = BaseWearLevelUnit<Address, DataSize, Key, WearLevelTiny, Option>;
+	using BaseClass::Uint8Min;
+
 private:
 	enum CounterEnum : uint8_t
 	{
@@ -51,11 +41,8 @@ private:
 	};
 
 public:
-	TinyWearLevelUnit(const uint16_t startBlockAddress)
-		: BaseWearLevelUnit<SizeBytes, Key, sizeof(uint8_t), (uint8_t)Option>(startBlockAddress)
-	{
-		Initialize();
-	}
+	TinyWearLevelUnit() : BaseClass()
+	{}
 
 #if defined(WEAR_LEVEL_DEBUG)
 	const uint8_t DebugMask()
@@ -67,7 +54,7 @@ public:
 private:
 	const uint8_t GetMask()
 	{
-		return ReadBlock(0);
+		return EmbeddedEEPROM::ReadBlock(Address + 0);
 	}
 
 	const uint8_t GetMask(const uint8_t counter)
@@ -107,19 +94,19 @@ protected:
 		case CounterEnum::c1:
 			return 1;
 		case CounterEnum::c2:
-			return min(2, Option - 1);
+			return Uint8Min(2, (uint8_t)Option - 1);
 		case CounterEnum::c3:
-			return min(3, Option - 1);
+			return Uint8Min(3, (uint8_t)Option - 1);
 		case CounterEnum::c4:
-			return min(4, Option - 1);
+			return Uint8Min(4, (uint8_t)Option - 1);
 		case CounterEnum::c5:
-			return min(5, Option - 1);
+			return Uint8Min(5, (uint8_t)Option - 1);
 		case CounterEnum::c6:
-			return min(6, Option - 1);
+			return Uint8Min(6, (uint8_t)Option - 1);
 		case CounterEnum::c7:
-			return min(7, Option - 1);
+			return Uint8Min(7, (uint8_t)Option - 1);
 		case CounterEnum::c8:
-			return min(8, Option - 1);
+			return Uint8Min(8, (uint8_t)Option - 1);
 		default:
 			return 0;
 		}
@@ -133,16 +120,16 @@ protected:
 	const uint8_t IncrementCounter() final
 	{
 		uint8_t counter = GetCurrentCounter();
-		if (counter + 1 >= Option)
+		if (counter + 1 >= (uint8_t)Option)
 		{
 			counter = 0;
-			ClearByteToOnes(0);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 0);
 		}
 		else
 		{
 			counter++;
 			uint8_t mask = GetMask(counter);
-			ProgramZeroBitsToZero(0, mask);
+			EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 0, mask);
 		}
 
 		return counter;
@@ -161,11 +148,10 @@ protected:
 		case CounterEnum::c6:
 		case CounterEnum::c7:
 		case CounterEnum::c8:
-			return GetCurrentCounter() <= Option;
+			return GetCurrentCounter() <= (uint8_t)Option;
 		default:
 			return false;
 		}
 	}
 };
-#endif
 #endif

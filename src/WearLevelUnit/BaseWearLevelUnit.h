@@ -2,37 +2,38 @@
 #define _BASE_WEAR_LEVEL_UNIT_
 
 #include "EmbeddedStorageBase\EmbeddedEEPROM.h"
-#if defined(EMBEDDED_EEPROM_STORAGE)
 #include "EmbeddedStorageBase\EmbeddedCrc.h"
 
 
-//#define WEAR_LEVEL_DEBUG
-
 /// <summary>
 /// Base Wear levelled, CRC checked EEPROM storage unit.
-/// Flash overhead: 1 byte for counter, 1 byte for CRC times Option.
+/// Flash overhead: 1 byte for counter, 1 byte for CRC times WearLevelOption.
 /// Designed for use with a single data struct or array.
 /// </summary>
-/// <param name="SizeBytes">Data size in bytes.</param>
-/// <param name="Option">WearLevel option, from 2 to 8.</param>
+/// <typeparam name="address">Address (offset) in EEPROM.</typeparam>
+/// <param name="DataSize">Data size in bytes.</param>
+/// <param name="WearLevelOption">WearLevel option, from 2 to 8.</param>
 /// <param name="Key">Storage cryptographic salt key.
 ///  Changing the key invalidates any previous data.</param>
-template<const uint16_t SizeBytes,
-	const uint8_t Key,
-	const uint8_t CounterSize,
-	const uint8_t Option>
-	class BaseWearLevelUnit : protected EmbeddedEEPROM
+template<const uint16_t address,
+	const uint16_t DataSize,
+	const uint32_t Key,
+	typename WearLevelType,
+	const WearLevelType WearLevelOption>
+class BaseWearLevelUnit
 {
 private:
-	EmbeddedCrc<Key> Crc;
-
-	static const uint8_t CrcSize = 1;
+	EmbeddedCrc<Key> Crc{};
 
 public:
-	static constexpr uint16_t GetUsedBlockCount()
+	static constexpr uint16_t Address()
 	{
-		// CounterSize bytes for counter, 1 byte for CRC times Option.
-		return CounterSize + ((uint16_t)Option * (SizeBytes + 1));
+		return address;
+	}
+
+	static constexpr uint16_t Size()
+	{
+		return EmbeddedStorage::GetStorageSize(DataSize, WearLevelOption);
 	}
 
 protected:
@@ -41,21 +42,10 @@ protected:
 	virtual const bool ValidateCounterMask() { return false; }
 
 public:
-	BaseWearLevelUnit(const uint16_t startBlockAddress)
-		: EmbeddedEEPROM(startBlockAddress)
-		, Crc()
-	{}
-
-protected:
-	/// <summary>
-	/// Ensure the current counter in this Unit is according to spec.
-	/// </summary>
-	void Initialize()
+	BaseWearLevelUnit()
 	{
-		if (!ValidateCounterMask())
-		{
-			ResetCounter();
-		}
+		EEPROM.begin();
+		Initialize();
 	}
 
 #if defined(WEAR_LEVEL_DEBUG)
@@ -65,9 +55,9 @@ protected:
 #endif
 	void ResetCounter()
 	{
-		for (uint8_t i = 0; i < CounterSize; i++)
+		for (uint8_t i = 0; i < GetCounterSize(); i++)
 		{
-			ProgramZeroBitsToZero(i, 0);
+			EmbeddedEEPROM::ProgramZeroBitsToZero(address + i, 0);
 		}
 	}
 
@@ -80,7 +70,7 @@ public:
 
 	const uint8_t DebugOption()
 	{
-		return Option;
+		return (uint8_t)WearLevelOption;
 	}
 
 	void DebugInitialize()
@@ -88,54 +78,74 @@ public:
 		Initialize();
 	}
 
-	const uint8_t GetCounterSize()
+	static constexpr size_t GetCounterSize()
 	{
-		return CounterSize;
-	}
-#endif
-
-#if defined(EEPROM_BOUNDS_CHECK)
-	const uint16_t GetStartAddress()
-	{
-		return StartBlockAddress;
+		return EmbeddedStorage::GetWearLevelCounterSize((uint8_t)WearLevelOption);
 	}
 #endif
 
 	/// <summary>
-	/// Reads the declared SizeBytes into target array.
+	/// Reads the declared DataSize into target array.
 	/// </summary>
 	/// <param name="target">Target array.</param>
 	/// <returns>True if CRC matches.</returns>
 	const bool ReadData(uint8_t* target)
 	{
 		const uint8_t counter = GetCurrentCounter();
-		const uint16_t offset = (uint16_t)CounterSize + ((uint16_t)counter * (SizeBytes + CrcSize));
+		const uint16_t offset = (uint16_t)GetCounterSize() + ((uint16_t)counter * EmbeddedStorage::GetStorageSize(DataSize));
 
-		for (uint16_t i = 0; i < SizeBytes; i++)
+		for (uint16_t i = 0; i < DataSize; i++)
 		{
-			target[i] = ReadBlock(offset + i);
+			target[i] = EmbeddedEEPROM::ReadBlock(address + offset + i);
 		}
 
-		return Crc.GetCrc(target, SizeBytes, counter) == ReadBlock(offset + SizeBytes);
+		return Crc.GetCrc(target, DataSize, counter) == EmbeddedEEPROM::ReadBlock(address + offset + DataSize);
 	}
 
 
 	/// <summary>
-	/// Writes the declared SizeBytes from source array.
+	/// Writes the declared DataSize from source array.
 	/// </summary>
 	/// <param name="source">Source array.</param>
 	void WriteData(const uint8_t* source)
 	{
 		const uint8_t counter = IncrementCounter();
-		const uint16_t offset = (uint16_t)CounterSize + ((uint16_t)counter * (SizeBytes + CrcSize));
+		const uint16_t offset = (uint16_t)GetCounterSize() + ((uint16_t)counter * EmbeddedStorage::GetStorageSize(DataSize));
 
-		for (uint16_t i = 0; i < SizeBytes; i++)
+		for (uint16_t i = 0; i < DataSize; i++)
 		{
-			WriteBlock(offset + i, source[i]);
+			EmbeddedEEPROM::WriteBlock(address + offset + i, source[i]);
 		}
 
-		WriteBlock(offset + SizeBytes, Crc.GetCrc(source, SizeBytes, counter));
+		EmbeddedEEPROM::WriteBlock(address + offset + DataSize, Crc.GetCrc(source, DataSize, counter));
+	}
+
+	void WriteByte(const uint16_t offset, const uint8_t value)
+	{
+		EmbeddedEEPROM::WriteBlock(address + offset, value);
+	}
+
+	const uint8_t ReadByte(const uint16_t offset)
+	{
+		return EmbeddedEEPROM::ReadBlock(address + offset);
+	}
+
+private:
+	/// <summary>
+	/// Ensure the current counter in this Unit is according to spec.
+	/// </summary>
+	void Initialize()
+	{
+		if (!ValidateCounterMask())
+		{
+			ResetCounter();
+		}
+	}
+
+protected:
+	static constexpr uint8_t Uint8Min(const uint8_t a, const uint8_t b)
+	{
+		return ((a <= b) * a) | ((b < a) * b);
 	}
 };
-#endif
 #endif

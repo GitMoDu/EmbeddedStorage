@@ -2,24 +2,8 @@
 #define _SHORT_WEAR_LEVEL_UNIT_
 
 #include "BaseWearLevelUnit.h"
-#if defined(EMBEDDED_EEPROM_STORAGE)
+#include <WearLevelType.h>
 
-/// <summary>
-/// Wear levelling short options.
-/// 2 blocks can count up to 17 with no erasures.
-/// For smaller options, use WearLevelUnit<WearLevelShort>.
-/// </summary>
-enum WearLevelShort
-{
-	x10 = 10,
-	x11 = 11,
-	x12 = 12,
-	x13 = 13,
-	x14 = 14,
-	x15 = 15,
-	x16 = 16,
-	x17 = 17
-};
 
 /// <summary>
 /// Wear levelled, CRC checked EEPROM storage unit.
@@ -30,12 +14,17 @@ enum WearLevelShort
 /// <param name="Option">WearLevel option, from 10 to 18.</param>
 /// <param name="Key">Storage cryptographic salt key. Defaults to SizeBites + Option.
 ///  Changing the key invalidates any previous data.</param>
-template<const uint16_t SizeBytes,
+template<const uint16_t Address,
+	const uint16_t DataSize,
 	const WearLevelShort Option = WearLevelShort::x10,
-	const uint8_t Key = SizeBytes + (uint8_t)Option + sizeof(uint16_t)>
-	class ShortWearLevelUnit
-	: public BaseWearLevelUnit<SizeBytes, Key, sizeof(uint16_t), (uint8_t)Option>
+	const uint32_t Key = EmbeddedStorage::GetStorageSize(DataSize, Option)>
+class ShortWearLevelUnit
+	: public BaseWearLevelUnit<Address, DataSize, Key, WearLevelShort, Option>
 {
+private:
+	using BaseClass = BaseWearLevelUnit<Address, DataSize, Key, WearLevelShort, Option>;
+	using BaseClass::Uint8Min;
+
 private:
 	enum CounterEnum : uint16_t
 	{
@@ -65,11 +54,8 @@ private:
 	} ATUI;
 
 public:
-	ShortWearLevelUnit(const uint16_t startBlockAddress)
-		: BaseWearLevelUnit<SizeBytes, Key, sizeof(uint16_t), (uint8_t)Option>(startBlockAddress)
-	{
-		Initialize();
-	}
+	ShortWearLevelUnit() : BaseClass()
+	{}
 
 #if defined(WEAR_LEVEL_DEBUG)
 	const uint16_t DebugMask()
@@ -81,8 +67,8 @@ public:
 private:
 	const uint16_t GetMask()
 	{
-		ATUI.Array[0] = ReadBlock(0);
-		ATUI.Array[1] = ReadBlock(1);
+		ATUI.Array[0] = EmbeddedEEPROM::ReadBlock(Address + 0);
+		ATUI.Array[1] = EmbeddedEEPROM::ReadBlock(Address + 1);
 
 		return ATUI.Value;
 	}
@@ -156,19 +142,19 @@ protected:
 		case CounterEnum::c9:
 			return 9;
 		case CounterEnum::c10:
-			return min(10, Option - 1);
+			return Uint8Min(10, (uint8_t)Option - 1);
 		case CounterEnum::c11:
-			return min(11, Option - 1);
+			return Uint8Min(11, (uint8_t)Option - 1);
 		case CounterEnum::c12:
-			return min(12, Option - 1);
+			return Uint8Min(12, (uint8_t)Option - 1);
 		case CounterEnum::c13:
-			return min(13, Option - 1);
+			return Uint8Min(13, (uint8_t)Option - 1);
 		case CounterEnum::c14:
-			return min(14, Option - 1);
+			return Uint8Min(14, (uint8_t)Option - 1);
 		case CounterEnum::c15:
-			return min(15, Option - 1);
+			return Uint8Min(15, (uint8_t)Option - 1);
 		case CounterEnum::c16:
-			return min(16, Option - 1);
+			return Uint8Min(16, (uint8_t)Option - 1);
 		default:
 			return 0;
 		}
@@ -182,24 +168,24 @@ protected:
 	const uint8_t IncrementCounter() final
 	{
 		uint8_t counter = GetCurrentCounter();
-		if (counter + 1 >= Option)
+		if (counter + 1 >= (uint8_t)Option)
 		{
 			counter = 0;
-			ClearByteToOnes(0);
-			ClearByteToOnes(1);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 0);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 1);
 		}
 		else
 		{
 			counter++;
 			ATUI.Value = GetMask(counter);
 
-			if (ATUI.Array[0] != ReadBlock(0))
+			if (ATUI.Array[0] != EmbeddedEEPROM::ReadBlock(Address + 0))
 			{
-				ProgramZeroBitsToZero(0, ATUI.Array[0]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 0, ATUI.Array[0]);
 			}
-			if (ATUI.Array[1] != ReadBlock(1))
+			if (ATUI.Array[1] != EmbeddedEEPROM::ReadBlock(Address + 1))
 			{
-				ProgramZeroBitsToZero(1, ATUI.Array[1]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 1, ATUI.Array[1]);
 			}
 		}
 
@@ -227,11 +213,10 @@ protected:
 		case CounterEnum::c14:
 		case CounterEnum::c15:
 		case CounterEnum::c16:
-			return GetCurrentCounter() <= Option;
+			return GetCurrentCounter() <= (uint8_t)Option;
 		default:
 			return false;
 		}
 	}
 };
-#endif
 #endif

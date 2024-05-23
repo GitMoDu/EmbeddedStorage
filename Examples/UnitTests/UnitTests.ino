@@ -1,122 +1,85 @@
 /*
-	Library Testing Project.
+	Library Unit Testing Project.
 */
 
 #define SERIAL_BAUD_RATE 9600
 
-
-#define EEPROM_RAM_DATA_SIZE 417
 #define EEPROM_BOUNDS_CHECK
 #define WEAR_LEVEL_DEBUG
+//#define EEPROM_MOCK_IN_MEMORY
 
 #include <StorageUnit.h>
 #include <WearLevelUnit.h>
 #include <StorageAttributor.h>
 
-
-
-struct Struct
+struct Storage1Definition
 {
-	uint32_t Value;
-} TestData;
+	struct Struct
+	{
+		uint8_t Value;
+	};
 
-enum StorageUnits
-{
-	Struct1,
-	Struct2,
-	Struct3,
-	UnitCount
+	static constexpr uint16_t Size = sizeof(Struct);
+	static constexpr uint32_t Key = 100001;
+	static constexpr NoWearLevel WearLevelOption = NoWearLevel::x1;
+	static constexpr uint16_t EeepromSize = EmbeddedStorage::GetStorageSize(Size /*,WearLevelOption*/);
 };
 
-enum StorageUnitSizes
+struct Storage2Definition
 {
-	Struct1Size = 3,
-	Struct2Size = 4,
-	Struct3Size = 10
+	struct Struct
+	{
+		uint16_t Value;
+	};
+
+	static constexpr uint16_t Size = sizeof(Struct);
+	static constexpr uint32_t Key = 100002;
+	static constexpr WearLevelTiny WearLevelOption = WearLevelTiny::x5;
+	static constexpr uint16_t EeepromSize = EmbeddedStorage::GetStorageSize(Size, WearLevelOption);
 };
 
-
-class MockStorageAttributor : public StorageAttributor
+struct Storage3Definition
 {
-protected:
-	virtual const uint8_t GetPartitionsCount() { return StorageUnits::UnitCount; }
-	virtual const uint16_t GetPartitionSize(const uint8_t partition)
+	struct Struct
 	{
-		switch (partition)
-		{
-		case Struct1:
-			return StorageUnitSizes::Struct1Size;
-		case Struct2:
-			return StorageUnitSizes::Struct2Size;
-		case Struct3:
-			return StorageUnitSizes::Struct3Size;
-		default:
-			return 0;
-		}
-	}
-} MockAttributor;
+		uint32_t Value;
+	};
 
-static const uint16_t MockUnitsSize = StorageUnitSizes::Struct1Size + StorageUnitSizes::Struct2Size + StorageUnitSizes::Struct3Size;
+	static constexpr uint16_t Size = sizeof(Struct);
+	static constexpr uint32_t Key = 100003;
+	static constexpr WearLevelShort WearLevelOption = WearLevelShort::x10;
+	static constexpr uint16_t EeepromSize = EmbeddedStorage::GetStorageSize(Size, WearLevelOption);
+};
 
+using StructsSizeAttributor = TemplateSizeAttributor<Storage1Definition::EeepromSize, Storage2Definition::EeepromSize, Storage3Definition::EeepromSize>;
+using StructsAttributor = TemplateStorageAttributor<Storage1Definition, Storage2Definition, Storage3Definition>;
 
-using TestUnitStorage = StorageUnit<1>;
-using TestUnitTiny2 = TinyWearLevelUnit<sizeof(uint8_t), WearLevelTiny::x2>;
-using TestUnitTiny9 = TinyWearLevelUnit<sizeof(uint16_t), WearLevelTiny::x9>;
-using TestUnitShort10 = ShortWearLevelUnit<sizeof(uint8_t), WearLevelShort::x10>;
-using TestUnitShort17 = ShortWearLevelUnit<sizeof(uint8_t), WearLevelShort::x17>;
-using TestUnitLong18 = LongWearLevelUnit<sizeof(uint8_t), WearLevelLong::x18>;
-using TestUnitLong33 = LongWearLevelUnit<sizeof(uint8_t), WearLevelLong::x33>;
-using TestUnitLongLong34 = LongLongWearLevelUnit<sizeof(uint8_t), WearLevelLongLong::x34>;
-using TestUnitLongLong65 = LongLongWearLevelUnit<sizeof(uint8_t), WearLevelLongLong::x65>;
+using TestUnitStorage = StorageUnit<0, sizeof(Storage1Definition::Struct)>;
+using TestUnitTiny5 = TinyWearLevelUnit<TestUnitStorage::Address() + TestUnitStorage::Size(), sizeof(Storage2Definition::Struct), Storage2Definition::WearLevelOption>;
+using TestUnitShort10 = ShortWearLevelUnit<TestUnitTiny5::Address() + TestUnitTiny5::Size(), sizeof(Storage3Definition::Struct), Storage3Definition::WearLevelOption>;
+static constexpr size_t InlineUsed = TestUnitShort10::Address() + TestUnitShort10::Size();
 
-TestUnitStorage StorageZero(0);
-TestUnitTiny2 Tiny2(StorageZero.GetStartAddress() + StorageZero.GetUsedBlockCount());
-TestUnitTiny9 Tiny9(Tiny2.GetStartAddress() + Tiny2.GetUsedBlockCount());
-TestUnitShort10 Short10(Tiny9.GetStartAddress() + Tiny9.GetUsedBlockCount());
-TestUnitShort17 Short17(Short10.GetStartAddress() + Short10.GetUsedBlockCount());
-TestUnitLong18 Long18(Short17.GetStartAddress() + Short17.GetUsedBlockCount());
-TestUnitLong33 Long33(Long18.GetStartAddress() + Long18.GetUsedBlockCount());
-TestUnitLongLong34 LongLong34(Long33.GetStartAddress() + Long33.GetUsedBlockCount());
-TestUnitLongLong65 LongLong65(LongLong34.GetStartAddress() + LongLong34.GetUsedBlockCount());
-
-static const uint16_t TestUnitsSize = LongLong65.GetStartAddress() + LongLong65.GetUsedBlockCount();
-
-class TestUnitsStorageAttributor : public StorageAttributor
-{
-protected:
-	virtual const uint8_t GetPartitionsCount() { return 9; }
-	virtual const uint16_t GetPartitionSize(const uint8_t partition)
-	{
-		switch (partition)
-		{
-		case 0:
-			return TestUnitStorage::GetUsedBlockCount();
-		case 1:
-			return TestUnitTiny2::GetUsedBlockCount();
-		case 2:
-			return TestUnitTiny9::GetUsedBlockCount();
-		case 3:
-			return TestUnitShort10::GetUsedBlockCount();
-		case 4:
-			return TestUnitShort17::GetUsedBlockCount();
-		case 5:
-			return TestUnitLong18::GetUsedBlockCount();
-		case 6:
-			return TestUnitLong33::GetUsedBlockCount();
-		case 7:
-			return TestUnitLongLong34::GetUsedBlockCount();
-		case 8:
-			return TestUnitLongLong65::GetUsedBlockCount();
-		default:
-			return 0;
-		}
-	}
-} TestAttributor;
-
+using TestUnitShort17 = ShortWearLevelUnit<0, sizeof(uint8_t), WearLevelShort::x17>;
+using TestUnitLong18 = LongWearLevelUnit<0, sizeof(uint8_t), WearLevelLong::x18>;
+using TestUnitLong33 = LongWearLevelUnit<0, sizeof(uint8_t), WearLevelLong::x33>;
+using TestUnitLongLong34 = LongLongWearLevelUnit<0, sizeof(uint8_t), WearLevelLongLong::x34>;
+using TestUnitLongLong65 = LongLongWearLevelUnit<0, sizeof(uint8_t), WearLevelLongLong::x65>;
 
 
 void loop()
 {
+}
+
+void PrintStorage(const uint16_t index, const uint16_t address, const uint16_t size)
+{
+	Serial.print(F("\tStorage"));
+	Serial.print(index + 1);
+	Serial.print(F(" @ "));
+	Serial.print(address);
+	Serial.print(F("\t("));
+	Serial.print(size);
+	Serial.print(F(" bytes)"));
+	Serial.println();
 }
 
 void OnFail()
@@ -127,10 +90,6 @@ void OnFail()
 	Serial.println();
 	Serial.println(F("--------------------"));
 
-#if defined(EEPROM_RAM_DATA_SIZE)
-	Serial.println(F("Erasing EEPROM."));
-	EmbeddedEEPROM::EraseEEPROM();
-#endif
 	while (true);;
 }
 
@@ -144,34 +103,38 @@ void setup()
 	Serial.println(F("Embedded Storage Unit Test Start"));
 	Serial.println();
 
-	if (TestUnitsSize > EEPROM_SIZE)
-	{
-		Serial.println(F("\tTest Units don't fit in RAM (fake EEPROM)."));
-		Serial.print(F("\tTest Units size\t"));
-		Serial.print(TestUnitsSize);
-		Serial.println(F(" bytes"));
-		OnFail();
-	}
+
+	Serial.print(F("Attribution ("));
+	Serial.print(StructsAttributor::GetUsed());
+	Serial.println(F(" bytes)"));
+	Serial.println(F("\tInline Size Attribution"));
+	PrintStorage(0, 0, TestUnitStorage::Size());
+	PrintStorage(1, TestUnitStorage::Address() + TestUnitStorage::Size(), TestUnitTiny5::Size());
+	PrintStorage(2, TestUnitTiny5::Address() + TestUnitTiny5::Size(), TestUnitShort10::Size());
 	Serial.println();
 
+	Serial.println(F("\tConstexpr Size Attribution"));
+	for (size_t i = 0; i < StructsAttributor::GetCount(); i++)
+	{
+		PrintStorage(i, StructsAttributor::GetAddress(i), StructsAttributor::GetSize(i));
+	}
 
-	TestStorageAttributor("Mock", MockAttributor, MockUnitsSize);
+	TestStorageAttributor();
+	Serial.println();
 
-	TestStorageAttributor("TestUnits", TestAttributor, TestUnitsSize);
-
-	TestStorageUnit();
-
-	TestUnitWearGeneric<TestUnitTiny2>("Tiny2", Tiny2);
-	TestUnitWearGeneric<TestUnitTiny9>("Tiny9", Tiny9);
-
-	TestUnitWearGeneric<TestUnitShort10>("Short10", Short10);
-	TestUnitWearGeneric<TestUnitShort17>("Short17", Short17);
-
-	TestUnitWearGeneric<TestUnitLong18>("Long18", Long18);
-	TestUnitWearGeneric<TestUnitLong33>("Long33", Long33);
-
-	TestUnitWearGeneric<TestUnitLongLong34>("LongLong34", LongLong34);
-	TestUnitWearGeneric<TestUnitLongLong65>("LongLong65", LongLong65);
+	TestStorageUnit<TestUnitStorage>();
+#if defined(ARDUINO_AVR_ATTINYX5)
+	TestUnitWear<TestUnitTiny5>("Tiny2");
+	TestUnitWear<TestUnitShort10>("Short10");
+#else
+	TestUnitWear<TestUnitTiny5>("Tiny2");
+	TestUnitWear<TestUnitShort10>("Short10");
+	TestUnitWear<TestUnitShort17>("Short17");
+	TestUnitWear<TestUnitLong18>("Long18");
+	TestUnitWear<TestUnitLong33>("Long33");
+	TestUnitWear<TestUnitLongLong34>("LongLong34");
+	TestUnitWear<TestUnitLongLong65>("LongLong65");
+#endif
 
 	Serial.println();
 	Serial.println();
@@ -188,18 +151,157 @@ void setup()
 	Serial.println();
 }
 
+void TestStorageAttributor()
+{
+	if (StructsAttributor::GetCount() != StructsSizeAttributor::GetCount()
+		|| StructsAttributor::GetCount() != 3)
+	{
+		Serial.println(F("Attributor. GetCount() failed."));
+		Serial.println(StructsAttributor::GetCount());
+		Serial.println(F(" expected "));
+		Serial.println(3);
+		OnFail();
+	}
+
+	if (StructsAttributor::GetUsed() > EmbeddedEEPROM::Size())
+	{
+		Serial.println(F("Attributor Validate() failed."));
+		OnFail();
+	}
+
+	if (StructsSizeAttributor::GetUsed() > EmbeddedEEPROM::Size())
+	{
+		Serial.println(F("SizeAttributor Validate() failed."));
+		OnFail();
+	}
+
+	if (StructsAttributor::GetUsed() != StructsSizeAttributor::GetUsed())
+	{
+		Serial.println(F("Attributor. GetUsed() failed."));
+		Serial.println(StructsAttributor::GetUsed());
+		Serial.println(F(" expected "));
+		Serial.println(StructsSizeAttributor::GetUsed());
+		OnFail();
+	}
+
+	if (StructsAttributor::GetUsed() != InlineUsed)
+	{
+		Serial.println(F("Attributor. GetUsed() failed."));
+		Serial.println(StructsAttributor::GetUsed());
+		Serial.println(F(" expected "));
+		Serial.println(InlineUsed);
+		OnFail();
+	}
+
+	for (size_t i = 0; i < StructsAttributor::GetCount(); i++)
+	{
+		if (StructsAttributor::GetAddress(i) != StructsSizeAttributor::GetAddress(i))
+		{
+			PrintAddressMismatch(i, StructsAttributor::GetAddress(i), StructsSizeAttributor::GetAddress(i), 0);
+			OnFail();
+		}
+
+		if (StructsAttributor::GetSize(i) != StructsSizeAttributor::GetSize(i))
+		{
+			PrintSizeMismatch(i, StructsAttributor::GetSize(i), StructsSizeAttributor::GetSize(i), 0);
+			OnFail();
+		}
+	}
+
+	if (StructsAttributor::GetAddressByKey(Storage1Definition::Key) != StructsSizeAttributor::GetAddress(0))
+	{
+		PrintAddressMismatch(0, StructsAttributor::GetAddressByKey(Storage1Definition::Key), StructsSizeAttributor::GetAddress(0), 1);
+		OnFail();
+	}
+	if (StructsAttributor::GetAddressByKey(Storage2Definition::Key) != StructsSizeAttributor::GetAddress(1))
+	{
+		PrintAddressMismatch(1, StructsAttributor::GetAddressByKey(Storage2Definition::Key), StructsSizeAttributor::GetAddress(1), 1);
+		OnFail();
+	}
+	if (StructsAttributor::GetAddressByKey(Storage3Definition::Key) != StructsSizeAttributor::GetAddress(2))
+	{
+		PrintAddressMismatch(2, StructsAttributor::GetAddressByKey(Storage3Definition::Key), StructsSizeAttributor::GetAddress(2), 1);
+		OnFail();
+	}
+
+	if (StructsAttributor::GetAddress(0) != TestUnitStorage::Address())
+	{
+		PrintAddressMismatch(0, StructsAttributor::GetAddress(0), TestUnitStorage::Address(), 2);
+		OnFail();
+	}
+
+	if (StructsAttributor::GetAddress(1) != TestUnitTiny5::Address())
+	{
+		PrintAddressMismatch(1, StructsAttributor::GetAddress(1), TestUnitTiny5::Address(), 2);
+		OnFail();
+	}
+
+	if (StructsAttributor::GetAddress(2) != TestUnitShort10::Address())
+	{
+		PrintAddressMismatch(2, StructsAttributor::GetAddress(2), TestUnitShort10::Address(), 2);
+
+		OnFail();
+	}
+
+	if (StructsAttributor::GetSize(0) != TestUnitStorage::Size())
+	{
+		PrintSizeMismatch(0, StructsAttributor::GetSize(0), TestUnitStorage::Size(), 1);
+		OnFail();
+	}
+	if (StructsAttributor::GetSize(1) != TestUnitTiny5::Size())
+	{
+		PrintSizeMismatch(1, StructsAttributor::GetSize(1), TestUnitTiny5::Size(), 1);
+		OnFail();
+	}
+	if (StructsAttributor::GetSize(2) != TestUnitShort10::Size())
+	{
+		PrintSizeMismatch(2, StructsAttributor::GetSize(2), TestUnitShort10::Size(), 1);
+		OnFail();
+	}
+
+	Serial.println(F("\tValidated."));
+	Serial.println();
+}
+
+void PrintAddressMismatch(const uint8_t index, const uint16_t address, const uint16_t expected, const uint8_t errorCode)
+{
+	Serial.print(F("Storage"));
+	Serial.print(index + 1);
+	Serial.print(F(" address mistmatch ["));
+	Serial.print(errorCode);
+	Serial.print(F("] "));
+	Serial.print(address);
+	Serial.print(F(" expected "));
+	Serial.println(expected);
+}
+
+void PrintSizeMismatch(const uint8_t index, const uint16_t size, const uint16_t expected, const uint8_t errorCode)
+{
+	Serial.print(F("Storage"));
+	Serial.print(index + 1);
+	Serial.print(F(" size mistmatch ["));
+	Serial.print(errorCode);
+	Serial.print(F("] "));
+	Serial.print(size);
+	Serial.print(F(" expected "));
+	Serial.println(expected);
+}
+
+template<typename StorageType>
 void TestStorageUnit()
 {
-	Serial.println(F("Testing Storage Unit:"));
-
-	EmbeddedEEPROM::EraseEEPROM();
+	StorageType storage{};
+	Serial.print(F("Testing Storage Unit\t"));
+	Serial.print(StorageType::Address());
+	Serial.print(',');
+	Serial.println(StorageType::Size());
 
 	const uint8_t testValue = 123;
 	uint8_t value = testValue;
-	StorageZero.WriteData(&value);
+	storage.WriteData(&value);
 
 	value = 0;
-	if (!StorageZero.ReadData(&value) || value != testValue)
+	if (!storage.ReadData(&value) || value != testValue)
 	{
 		Serial.println(F("\tStorage Unit invalidated."));
 		OnFail();
@@ -209,11 +311,9 @@ void TestStorageUnit()
 }
 
 template<class UnitType>
-void PrintWearMask(String label, const uint8_t size, UnitType unit)
+void PrintWearMask(const uint8_t size, UnitType unit)
 {
 	const uint64_t mask = unit.DebugMask();
-	Serial.print('\t');
-	Serial.print(label);
 	Serial.print(F(" 0b"));
 	for (int8_t i = (size * 8) - 1; i >= 0; i--)
 	{
@@ -231,15 +331,21 @@ void PrintWearMask(String label, const uint8_t size, UnitType unit)
 }
 
 template<class UnitType>
-void TestUnitWearGeneric(String name, UnitType unit)
+void TestUnitWear(String name)
 {
+	UnitType unit{};
+
 	const uint8_t option = unit.DebugOption();
 	Serial.print(F("Testing Wear Level "));
 	Serial.print(name);
-	Serial.println(F(" Unit:"));
+	Serial.print(F(" Unit\t"));
+	Serial.print(UnitType::Address());
+	Serial.print(',');
+	Serial.println(UnitType::Size());
 
 	EmbeddedEEPROM::EraseEEPROM();
-	PrintWearMask<UnitType>("Erase", unit.GetCounterSize(), unit);
+	Serial.print(F("\tErase"));
+	PrintWearMask<UnitType>(unit.GetCounterSize(), unit);
 	if (unit.DebugCounter() != 0)
 	{
 		Serial.print(F("\tCounter erased EEPROM invalidated: "));
@@ -247,14 +353,14 @@ void TestUnitWearGeneric(String name, UnitType unit)
 		OnFail();
 	}
 
-#if defined(EEPROM_RAM_DATA_SIZE)
-	FakeEEPROM[unit.GetStartAddress()] = (1 << 4);
-#else
-	EEPROM.update(unit.GetStartAddress(), (1 << 4));
-#endif
-	PrintWearMask<UnitType>("Corrupt", unit.GetCounterSize(), unit);
+
+	EmbeddedEEPROM::WriteBlock(unit.Address(), (1 << 4));
+	Serial.print(F("\tCorrupt"));
+	PrintWearMask<UnitType>(unit.GetCounterSize(), unit);
+
 	unit.DebugInitialize();
-	PrintWearMask<UnitType>("Initialized", unit.GetCounterSize(), unit);
+	Serial.print(F("\tInitialized"));
+	PrintWearMask<UnitType>(unit.GetCounterSize(), unit);
 	if (unit.DebugCounter() != (option - 1))
 	{
 		Serial.print(F("\tCounter initialize invalidated: "));
@@ -263,7 +369,8 @@ void TestUnitWearGeneric(String name, UnitType unit)
 	}
 
 	unit.ResetCounter();
-	PrintWearMask<UnitType>("Reset", unit.GetCounterSize(), unit);
+	Serial.print(F("\tReset"));
+	PrintWearMask<UnitType>(unit.GetCounterSize(), unit);
 	if (unit.DebugCounter() != (option - 1))
 	{
 		Serial.print(F("\tCounter reset invalidated: "));
@@ -281,7 +388,7 @@ void TestUnitWearGeneric(String name, UnitType unit)
 		Serial.print(F("\t"));
 		Serial.print(F("\t"));
 		Serial.print(i);
-		PrintWearMask<UnitType>("", unit.GetCounterSize(), unit);
+		PrintWearMask<UnitType>(unit.GetCounterSize(), unit);
 
 		if (unit.DebugCounter() != i)
 		{
@@ -303,7 +410,8 @@ void TestUnitWearGeneric(String name, UnitType unit)
 
 	// One more write to force to counter to cycle back to zero.
 	unit.WriteData(&value);
-	PrintWearMask<UnitType>("End", unit.GetCounterSize(), unit);
+	Serial.print(F("\tEnd"));
+	PrintWearMask<UnitType>(unit.GetCounterSize(), unit);
 	if (unit.DebugCounter() != 0)
 	{
 		Serial.print(F("\tCounter end invalidated:"));
@@ -312,52 +420,4 @@ void TestUnitWearGeneric(String name, UnitType unit)
 	}
 
 	Serial.println(F("\tValidated."));
-}
-
-void TestStorageAttributor(String name, StorageAttributor& at, const uint16_t expectedSize)
-{
-	Serial.print(F("Testing "));
-	Serial.print(name);
-	Serial.println(F(" Storage Attributor:"));
-	if (!at.Validate())
-	{
-		Serial.print('\t');
-		Serial.print(name);
-		Serial.println(F(" Attributor invalidated."));
-		OnFail();
-	}
-
-	Serial.println(F("\tUsed\tFree\tTotal"));
-	Serial.print('\t');
-	Serial.print(at.GetUsedSpace());
-	Serial.print('\t');
-	Serial.print(at.GetFreeSpace());
-	Serial.print('\t');
-	Serial.println(at.GetTotalSpace());
-
-	if (at.GetUsedSpace() != expectedSize)
-	{
-		Serial.print('\t');
-		Serial.print(name);
-		Serial.println(F(" Attributor.GetUsedSpace() failed."));
-		OnFail();
-	}
-
-	if (at.GetTotalSpace() != EEPROM_SIZE)
-	{
-		Serial.print('\t');
-		Serial.print(name);
-		Serial.println(F(" Attributor.GetTotalSpace() failed."));
-		OnFail();
-	}
-
-	if (at.GetTotalSpace() - at.GetUsedSpace() != at.GetFreeSpace())
-	{
-		Serial.print('\t');
-		Serial.print(name);
-		Serial.println(F(" Attributor.GetFreeSpace() failed."));
-		OnFail();
-	}
-	Serial.println(F("\tValidated."));
-	Serial.println();
 }

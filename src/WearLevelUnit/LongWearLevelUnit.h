@@ -2,52 +2,30 @@
 #define _LONG_WEAR_LEVEL_UNIT_
 
 #include "BaseWearLevelUnit.h"
-#if defined(EMBEDDED_EEPROM_STORAGE)
+#include <WearLevelType.h>
 
-
-/// <summary>
-/// Wear levelling long options.
-/// 4 blocks can count up to 33 with no erasures.
-/// For smaller options, use WearLevelUnit<WearLevelShort>.
-/// </summary>
-enum WearLevelLong
-{
-	x18 = 18,
-	x19 = 19,
-	x20 = 20,
-	x21 = 21,
-	x22 = 22,
-	x23 = 23,
-	x24 = 24,
-	x25 = 25,
-	x26 = 26,
-	x27 = 27,
-	x28 = 28,
-	x29 = 29,
-	x30 = 30,
-	x31 = 31,
-	x32 = 32,
-	x33 = 33
-};
 
 /// <summary>
 /// Wear levelled, CRC checked EEPROM storage unit.
 /// Flash overhead: 4 bytes for counter, 1 byte for CRC times Option.
 /// Designed for use with a single data struct or array.
 /// </summary>
-/// <param name="SizeBytes">Data size in bytes.</param>
+/// <param name="DataSize">Data size in bytes.</param>
 /// <param name="Option">WearLevel option, from 18 to 33.</param>
 /// <param name="Key">Storage cryptographic salt key. Defaults to SizeBites + Option.
 ///  Changing the key invalidates any previous data.</param>
-template<const uint16_t SizeBytes,
+template<const uint16_t Address,
+	const uint16_t DataSize,
 	const WearLevelLong Option = WearLevelLong::x18,
-	const uint8_t Key = SizeBytes + (uint8_t)Option + sizeof(uint32_t)>
-	class LongWearLevelUnit
-	: public BaseWearLevelUnit<SizeBytes, Key, sizeof(uint32_t), (uint8_t)Option>
+	const uint32_t Key = EmbeddedStorage::GetStorageSize(DataSize, Option)>
+class LongWearLevelUnit
+	: public BaseWearLevelUnit<Address, DataSize, Key, WearLevelLong, Option>
 {
 private:
-	uint16_t StartAddress;
+	using BaseClass = BaseWearLevelUnit<Address, DataSize, Key, WearLevelLong, Option>;
+	using BaseClass::Uint8Min;
 
+private:
 	union ATUI32
 	{
 		uint32_t Value;
@@ -57,12 +35,8 @@ private:
 	static const int8_t Counts = sizeof(uint32_t) * 8;
 
 public:
-	LongWearLevelUnit(const uint16_t startBlockAddress)
-		: BaseWearLevelUnit<SizeBytes, Key, sizeof(uint32_t), (uint8_t)Option>(startBlockAddress)
-		, StartAddress(startBlockAddress)
-	{
-		Initialize();
-	}
+	LongWearLevelUnit() : BaseClass()
+	{}
 
 #if defined(WEAR_LEVEL_DEBUG)
 	const uint32_t DebugMask()
@@ -74,10 +48,10 @@ public:
 private:
 	const uint32_t GetMask()
 	{
-		ATUI.Array[0] = ReadBlock(0);
-		ATUI.Array[1] = ReadBlock(1);
-		ATUI.Array[2] = ReadBlock(2);
-		ATUI.Array[3] = ReadBlock(3);
+		ATUI.Array[0] = EmbeddedEEPROM::ReadBlock(Address + 0);
+		ATUI.Array[1] = EmbeddedEEPROM::ReadBlock(Address + 1);
+		ATUI.Array[2] = EmbeddedEEPROM::ReadBlock(Address + 2);
+		ATUI.Array[3] = EmbeddedEEPROM::ReadBlock(Address + 3);
 
 		return ATUI.Value;
 	}
@@ -108,12 +82,12 @@ protected:
 			{
 				if (((uint8_t)(mask >> (Counts - i))) & 1)
 				{
-					return min(i - 1, Option - 1);
+					return Uint8Min(i - 1, (uint8_t)Option - 1);
 				}
 			}
 		}
 
-		return Option - 1;
+		return (uint8_t)Option - 1;
 	}
 
 	/// <summary>
@@ -124,35 +98,35 @@ protected:
 	const uint8_t IncrementCounter() final
 	{
 		uint8_t counter = GetCurrentCounter();
-		if (counter + 1 >= Option)
+		if (counter + 1 >= (uint8_t)Option)
 		{
 			counter = 0;
 
-			ClearByteToOnes(0);
-			ClearByteToOnes(1);
-			ClearByteToOnes(2);
-			ClearByteToOnes(3);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 0);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 1);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 2);
+			EmbeddedEEPROM::ClearByteToOnes(Address + 3);
 		}
 		else
 		{
 			counter++;
 			ATUI.Value = GetMask(counter);
 
-			if (ATUI.Array[0] != ReadBlock(0))
+			if (ATUI.Array[0] != EmbeddedEEPROM::ReadBlock(Address + 0))
 			{
-				ProgramZeroBitsToZero(0, ATUI.Array[0]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 0, ATUI.Array[0]);
 			}
-			if (ATUI.Array[1] != ReadBlock(1))
+			if (ATUI.Array[1] != EmbeddedEEPROM::ReadBlock(Address + 1))
 			{
-				ProgramZeroBitsToZero(1, ATUI.Array[1]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 1, ATUI.Array[1]);
 			}
-			if (ATUI.Array[2] != ReadBlock(2))
+			if (ATUI.Array[2] != EmbeddedEEPROM::ReadBlock(Address + 2))
 			{
-				ProgramZeroBitsToZero(2, ATUI.Array[2]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 2, ATUI.Array[2]);
 			}
-			if (ATUI.Array[3] != ReadBlock(3))
+			if (ATUI.Array[3] != EmbeddedEEPROM::ReadBlock(Address + 3))
 			{
-				ProgramZeroBitsToZero(3, ATUI.Array[3]);
+				EmbeddedEEPROM::ProgramZeroBitsToZero(Address + 3, ATUI.Array[3]);
 			}
 		}
 
@@ -177,7 +151,7 @@ protected:
 					// Make sure all bits to the right are a 1.
 					for (int8_t j = i; j > 0; j--)
 					{
-						if (~((uint8_t)(mask >> j) & 1))
+						if (~((uint32_t)(mask >> j) & 1))
 						{
 							return false;
 						}
@@ -191,5 +165,4 @@ protected:
 		return true;
 	}
 };
-#endif
 #endif
