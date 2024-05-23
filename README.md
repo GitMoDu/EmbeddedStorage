@@ -1,6 +1,7 @@
 # EmbeddedStorage
 
-Abstractions for storing, reading and managing data structs and arrays in EEPROM, inspired by Arduino EEPROMWearLevel Library.
+Read, write and manage data in EEPROM, for Arduino AVR.
+Inspired by Arduino EEPROMWearLevel Library.
 
 ## Features:
   - CRC validated data.
@@ -11,7 +12,7 @@ Abstractions for storing, reading and managing data structs and arrays in EEPROM
   - Static compile-time var-arg allocator, for collection of units in one project.
 
 ## Dependencies:
-  - CRC: [https://github.com/FrankBoesing/FastCRC](https://github.com/RobTillaart/CRC)
+  - CRC: [https://github.com/RobTillaart/CRC](https://github.com/RobTillaart/CRC)
   - Arduino EEPROM
     - https://www.arduino.cc/en/Reference/EEPROM
 
