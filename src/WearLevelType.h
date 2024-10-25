@@ -5,7 +5,7 @@
 
 
 /// <summary>
-/// No Wear levelling option.
+/// No Wear leveling option.
 /// </summary>
 enum class NoWearLevel : uint8_t
 {
@@ -13,7 +13,7 @@ enum class NoWearLevel : uint8_t
 };
 
 /// <summary>
-/// Wear levelling tiny options.
+/// Wear leveling tiny options.
 /// A single block can count up to 9 with no erasures.
 /// x1 option doesn't make use of rolling counter, use StorageUnit instead.
 /// </summary>
@@ -31,9 +31,9 @@ enum class WearLevelTiny : uint8_t
 
 
 /// <summary>
-/// Wear levelling short options.
+/// Wear leveling short options.
 /// 2 blocks can count up to 17 with no erasures.
-/// For smaller options, use WearLevelUnit<WearLevelShort>.
+/// For smaller options, use WearLevelUnit<WearLevelTiny>.
 /// </summary>
 enum class WearLevelShort : uint8_t
 {
@@ -49,7 +49,7 @@ enum class WearLevelShort : uint8_t
 
 
 /// <summary>
-/// Wear levelling long options.
+/// Wear leveling long options.
 /// 4 blocks can count up to 33 with no erasures.
 /// For smaller options, use WearLevelUnit<WearLevelShort>.
 /// </summary>
@@ -74,7 +74,7 @@ enum class WearLevelLong : uint8_t
 };
 
 /// <summary>
-/// Wear levelling long options.
+/// Wear leveling long long options.
 /// 8 blocks can count up to 65 with no erasures.
 /// For smaller options, use WearLevelUnit<WearLevelLong>.
 /// </summary>
