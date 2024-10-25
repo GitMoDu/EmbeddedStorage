@@ -6,7 +6,7 @@ Inspired by Arduino EEPROMWearLevel Library.
 ## Features:
   - CRC validated data.
   - Templated StorageUnit (address and size).
-  - Wear levelling options (thank you @PRosenb https://github.com/PRosenb/EEPROMWearLevel).
+  - Wear leveling options (thank you @PRosenb https://github.com/PRosenb/EEPROMWearLevel).
   - Optional run-time bounds check with EEPROM_BOUNDS_CHECK.
   - Support for ATTiny85.
   - Static compile-time var-arg allocator, for collection of units in one project.
@@ -32,7 +32,7 @@ Special mention for Arduino EEPROMWearLevel Library flash twidling bits.
 
   - WearLevelUnit
     - Same base features as StorageUnit.
-    - Wear levelling options start at x2. For x1 use StorageUnit.
+    - Wear leveling options start at x2. For x1 use StorageUnit.
     - 1 byte of EEPROM overhead per level option, plus counter.
     - 1 to 8 bytes of counter EEPROM overhead.
     - Wear level units:
