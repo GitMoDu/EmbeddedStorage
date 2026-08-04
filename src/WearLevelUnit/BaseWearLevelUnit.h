@@ -44,7 +44,6 @@ protected:
 public:
 	BaseWearLevelUnit()
 	{
-		EEPROM.begin();
 		Initialize();
 	}
 
@@ -77,12 +76,12 @@ public:
 	{
 		Initialize();
 	}
+#endif
 
 	static constexpr size_t GetCounterSize()
 	{
 		return EmbeddedStorage::GetWearLevelCounterSize((uint8_t)WearLevelOption);
 	}
-#endif
 
 	/// <summary>
 	/// Reads the declared DataSize into target array.
