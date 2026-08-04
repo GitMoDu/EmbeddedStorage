@@ -1,4 +1,4 @@
-# EmbeddedStorage
+# ![Embedded Storage](https://github.com/GitMoDu/EmbeddedStorage/blob/master/media/banner.svg)
 
 Read, write and manage data in EEPROM, for Arduino AVR.
 Inspired by Arduino EEPROMWearLevel Library.
