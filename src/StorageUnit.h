@@ -32,10 +32,7 @@ public:
 	}
 
 public:
-	StorageUnit()
-	{
-		EEPROM.begin();
-	}
+	StorageUnit() {}
 
 	/// <summary>
 	/// Reads the declared DataSize into target array.
