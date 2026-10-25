@@ -59,6 +59,10 @@ using TestUnitTiny5 = TinyWearLevelUnit<TestUnitStorage::Address() + TestUnitSto
 using TestUnitShort10 = ShortWearLevelUnit<TestUnitTiny5::Address() + TestUnitTiny5::Size(), sizeof(Storage3Definition::Struct), Storage3Definition::WearLevelOption>;
 static constexpr size_t InlineUsed = TestUnitShort10::Address() + TestUnitShort10::Size();
 
+using TestUnitStorageMultiByte = StorageUnit<InlineUsed, 4, 100004>;
+using TestUnitStorageWrongKey = StorageUnit<InlineUsed, 4, 100005>;
+using TestUnitTiny5MultiByte = TinyWearLevelUnit<TestUnitStorageMultiByte::Address() + TestUnitStorageMultiByte::Size(), 4, WearLevelTiny::x5, 100006>;
+
 using TestUnitShort17 = ShortWearLevelUnit<0, sizeof(uint8_t), WearLevelShort::x17>;
 using TestUnitLong18 = LongWearLevelUnit<0, sizeof(uint8_t), WearLevelLong::x18>;
 using TestUnitLong33 = LongWearLevelUnit<0, sizeof(uint8_t), WearLevelLong::x33>;
@@ -123,6 +127,8 @@ void setup()
 	Serial.println();
 
 	TestStorageUnit<TestUnitStorage>();
+	TestStorageUnitMultiByte();
+	TestUnitWearMultiByte();
 #if defined(ARDUINO_AVR_ATTINYX5)
 	TestUnitWear<TestUnitTiny5>("Tiny2");
 	TestUnitWear<TestUnitShort10>("Short10");
@@ -213,14 +219,32 @@ void TestStorageAttributor()
 		PrintAddressMismatch(0, StructsAttributor::GetAddressByKey(Storage1Definition::Key), StructsSizeAttributor::GetAddress(0), 1);
 		OnFail();
 	}
+	if (StructsAttributor::GetSizeByKey(Storage1Definition::Key) != StructsSizeAttributor::GetSize(0)
+		|| StructsAttributor::GetSizeByKey<Storage1Definition>() != StructsSizeAttributor::GetSize(0))
+	{
+		PrintSizeMismatch(0, StructsAttributor::GetSizeByKey(Storage1Definition::Key), StructsSizeAttributor::GetSize(0), 2);
+		OnFail();
+	}
 	if (StructsAttributor::GetAddressByKey(Storage2Definition::Key) != StructsSizeAttributor::GetAddress(1))
 	{
 		PrintAddressMismatch(1, StructsAttributor::GetAddressByKey(Storage2Definition::Key), StructsSizeAttributor::GetAddress(1), 1);
 		OnFail();
 	}
+	if (StructsAttributor::GetSizeByKey(Storage2Definition::Key) != StructsSizeAttributor::GetSize(1)
+		|| StructsAttributor::GetSizeByKey<Storage2Definition>() != StructsSizeAttributor::GetSize(1))
+	{
+		PrintSizeMismatch(1, StructsAttributor::GetSizeByKey(Storage2Definition::Key), StructsSizeAttributor::GetSize(1), 2);
+		OnFail();
+	}
 	if (StructsAttributor::GetAddressByKey(Storage3Definition::Key) != StructsSizeAttributor::GetAddress(2))
 	{
 		PrintAddressMismatch(2, StructsAttributor::GetAddressByKey(Storage3Definition::Key), StructsSizeAttributor::GetAddress(2), 1);
+		OnFail();
+	}
+	if (StructsAttributor::GetSizeByKey(Storage3Definition::Key) != StructsSizeAttributor::GetSize(2)
+		|| StructsAttributor::GetSizeByKey<Storage3Definition>() != StructsSizeAttributor::GetSize(2))
+	{
+		PrintSizeMismatch(2, StructsAttributor::GetSizeByKey(Storage3Definition::Key), StructsSizeAttributor::GetSize(2), 2);
 		OnFail();
 	}
 
@@ -308,6 +332,160 @@ void TestStorageUnit()
 	}
 
 	Serial.println(F("\tValidated."));
+}
+
+void TestStorageUnitMultiByte()
+{
+	TestUnitStorageMultiByte storage{};
+	TestUnitStorageWrongKey wrongKey{};
+	const uint8_t expected[] = { 0x12, 0x34, 0x56, 0x78 };
+	uint8_t value[sizeof(expected)]{};
+
+	Serial.print(F("Testing Multi-byte Storage Unit\t"));
+	Serial.print(TestUnitStorageMultiByte::Address());
+	Serial.print(',');
+	Serial.println(TestUnitStorageMultiByte::Size());
+
+	EmbeddedEEPROM::EraseEEPROM();
+	if (storage.ReadData(value))
+	{
+		Serial.println(F("\tErased storage was reported valid."));
+		OnFail();
+	}
+
+	storage.WriteData(expected);
+	if (!storage.ReadData(value))
+	{
+		Serial.println(F("\tMulti-byte storage CRC invalidated after write."));
+		OnFail();
+	}
+	for (uint8_t i = 0; i < sizeof(expected); i++)
+	{
+		if (value[i] != expected[i])
+		{
+			Serial.print(F("\tMulti-byte storage mismatch at byte "));
+			Serial.println(i);
+			OnFail();
+		}
+	}
+	if (wrongKey.ReadData(value))
+	{
+		Serial.println(F("\tStorage data was accepted with the wrong key."));
+		OnFail();
+	}
+
+	storage.WriteByte(1, expected[1] ^ 0xFF);
+	if (storage.ReadByte(1) != (uint8_t)(expected[1] ^ 0xFF) || storage.ReadData(value))
+	{
+		Serial.println(F("\tPayload corruption was not rejected."));
+		OnFail();
+	}
+
+	storage.WriteData(expected);
+	const uint16_t crcAddress = TestUnitStorageMultiByte::Address() + sizeof(expected);
+	EmbeddedEEPROM::WriteBlock(crcAddress, EmbeddedEEPROM::ReadBlock(crcAddress) ^ 0xFF);
+	if (storage.ReadData(value))
+	{
+		Serial.println(F("\tCRC corruption was not rejected."));
+		OnFail();
+	}
+	storage.WriteData(expected);
+
+	Serial.println(F("\tValidated erased-state, wrong-key, multi-byte, and CRC checks."));
+}
+
+void TestUnitWearMultiByte()
+{
+	const uint8_t expected[][4] =
+	{
+		{ 0x10, 0x20, 0x30, 0x40 },
+		{ 0x11, 0x21, 0x31, 0x41 },
+		{ 0x12, 0x22, 0x32, 0x42 },
+		{ 0x13, 0x23, 0x33, 0x43 },
+		{ 0x14, 0x24, 0x34, 0x44 }
+	};
+	uint8_t value[sizeof(expected[0])]{};
+
+	Serial.print(F("Testing Multi-byte Wear Level Unit\t"));
+	Serial.print(TestUnitTiny5MultiByte::Address());
+	Serial.print(',');
+	Serial.println(TestUnitTiny5MultiByte::Size());
+
+	EmbeddedEEPROM::EraseEEPROM();
+	TestUnitTiny5MultiByte unit{};
+	// Start at the final counter so the first write uses slot zero.
+	unit.ResetCounter();
+	for (uint8_t i = 0; i < sizeof(expected) / sizeof(expected[0]); i++)
+	{
+		unit.WriteData(expected[i]);
+		TestUnitTiny5MultiByte reloaded{};
+		if (reloaded.DebugCounter() != i)
+		{
+			Serial.print(F("\tMulti-byte wear-level counter mismatch after reinitialization: "));
+			Serial.print(reloaded.DebugCounter());
+			Serial.print(F(" expected "));
+			Serial.println(i);
+			OnFail();
+		}
+		if (!reloaded.ReadData(value))
+		{
+			Serial.println(F("\tMulti-byte wear-level data did not persist after reinitialization."));
+			OnFail();
+		}
+		for (uint8_t j = 0; j < sizeof(value); j++)
+		{
+			if (value[j] != expected[i][j])
+			{
+				Serial.print(F("\tMulti-byte wear-level mismatch at byte "));
+				Serial.println(j);
+				OnFail();
+			}
+		}
+	}
+
+	const uint8_t wrappedValue[] = { 0x55, 0x66, 0x77, 0x88 };
+	unit.WriteData(wrappedValue);
+	TestUnitTiny5MultiByte reloaded{};
+	if (reloaded.DebugCounter() != 0 || !reloaded.ReadData(value))
+	{
+		Serial.println(F("\tMulti-byte wear-level rollover did not persist."));
+		OnFail();
+	}
+	for (uint8_t i = 0; i < sizeof(value); i++)
+	{
+		if (value[i] != wrappedValue[i])
+		{
+			Serial.println(F("\tMulti-byte wear-level rollover data mismatch."));
+			OnFail();
+		}
+	}
+
+	const uint16_t currentDataOffset = reloaded.GetCounterSize()
+		+ reloaded.DebugCounter() * EmbeddedStorage::GetStorageSize(sizeof(value));
+	reloaded.WriteByte(currentDataOffset + 2, wrappedValue[2] ^ 0xFF);
+	if (reloaded.ReadData(value))
+	{
+		Serial.println(F("\tMulti-byte wear-level corruption was not rejected."));
+		OnFail();
+	}
+	const uint8_t recoveryValue[] = { 0xA5, 0x5A, 0xC3, 0x3C };
+	reloaded.WriteData(recoveryValue);
+	TestUnitTiny5MultiByte recovered{};
+	if (recovered.DebugCounter() != 1 || !recovered.ReadData(value))
+	{
+		Serial.println(F("\tMulti-byte wear-level recovery write did not persist."));
+		OnFail();
+	}
+	for (uint8_t i = 0; i < sizeof(value); i++)
+	{
+		if (value[i] != recoveryValue[i])
+		{
+			Serial.println(F("\tMulti-byte wear-level recovery data mismatch."));
+			OnFail();
+		}
+	}
+
+	Serial.println(F("\tMulti-byte wear-level persistence, rollover, CRC, and recovery validated."));
 }
 
 template<class UnitType>
@@ -406,6 +584,14 @@ void TestUnitWear(String name)
 			Serial.println(F("\tReadback invalidated."));
 			OnFail();
 		}
+
+		UnitType reloaded{};
+		uint8_t reloadedValue = 0;
+		if (reloaded.DebugCounter() != i || !reloaded.ReadData(&reloadedValue) || reloadedValue != value)
+		{
+			Serial.println(F("\tWear-level data did not persist after reinitialization."));
+			OnFail();
+		}
 	}
 
 	// One more write to force to counter to cycle back to zero.
@@ -419,5 +605,25 @@ void TestUnitWear(String name)
 		OnFail();
 	}
 
+	const uint8_t finalValue = value;
+	const uint16_t currentDataOffset = unit.GetCounterSize()
+		+ unit.DebugCounter() * EmbeddedStorage::GetStorageSize(sizeof(uint8_t));
+	unit.WriteByte(currentDataOffset, finalValue ^ 0xFF);
+	value = 0;
+	if (unit.ReadData(&value))
+	{
+		Serial.println(F("\tWear-level payload corruption was not rejected."));
+		OnFail();
+	}
+
+	unit.WriteData(&finalValue);
+	value = 0;
+	if (!unit.ReadData(&value) || value != finalValue)
+	{
+		Serial.println(F("\tWear-level write after corruption was not readable."));
+		OnFail();
+	}
+
+	Serial.println(F("\tPayload corruption rejected; write recovered."));
 	Serial.println(F("\tValidated."));
 }
