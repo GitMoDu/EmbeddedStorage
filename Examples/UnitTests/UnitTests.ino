@@ -8,6 +8,7 @@
 #define WEAR_LEVEL_DEBUG
 //#define EEPROM_MOCK_IN_MEMORY
 
+#include <AsyncStorageUnit.h>
 #include <StorageUnit.h>
 #include <WearLevelUnit.h>
 #include <StorageAttributor.h>
@@ -62,6 +63,17 @@ static constexpr size_t InlineUsed = TestUnitShort10::Address() + TestUnitShort1
 using TestUnitStorageMultiByte = StorageUnit<InlineUsed, 4, 100004>;
 using TestUnitStorageWrongKey = StorageUnit<InlineUsed, 4, 100005>;
 using TestUnitTiny5MultiByte = TinyWearLevelUnit<TestUnitStorageMultiByte::Address() + TestUnitStorageMultiByte::Size(), 4, WearLevelTiny::x5, 100006>;
+using TestUnitAsyncStorage = AsyncStorageUnit<TestUnitTiny5MultiByte::Address() + TestUnitTiny5MultiByte::Size(), 4, 100007>;
+using TestUnitAsyncTiny5 = AsyncTinyWearLevelUnit<TestUnitTiny5::Address(), sizeof(Storage2Definition::Struct), WearLevelTiny::x5>;
+using TestUnitAsyncShort10 = AsyncShortWearLevelUnit<0, sizeof(uint8_t), WearLevelShort::x10>;
+using TestUnitAsyncLong18 = AsyncLongWearLevelUnit<0, sizeof(uint8_t), WearLevelLong::x18>;
+using TestUnitAsyncLongLong34 = AsyncLongLongWearLevelUnit<0, sizeof(uint8_t), WearLevelLongLong::x34>;
+
+static_assert(sizeof(TestUnitStorage) < sizeof(AsyncStorageUnit<0, sizeof(uint8_t)>), "Synchronous storage must omit async state.");
+static_assert(sizeof(TestUnitTiny5) < sizeof(TestUnitAsyncTiny5), "Synchronous wear-level storage must omit async state.");
+static_assert(sizeof(ShortWearLevelUnit<0, sizeof(uint8_t), WearLevelShort::x10>) < sizeof(TestUnitAsyncShort10), "Synchronous short wear-level storage must omit async state.");
+static_assert(sizeof(LongWearLevelUnit<0, sizeof(uint8_t), WearLevelLong::x18>) < sizeof(TestUnitAsyncLong18), "Synchronous long wear-level storage must omit async state.");
+static_assert(sizeof(LongLongWearLevelUnit<0, sizeof(uint8_t), WearLevelLongLong::x34>) < sizeof(TestUnitAsyncLongLong34), "Synchronous long-long wear-level storage must omit async state.");
 
 using TestUnitShort17 = ShortWearLevelUnit<0, sizeof(uint8_t), WearLevelShort::x17>;
 using TestUnitLong18 = LongWearLevelUnit<0, sizeof(uint8_t), WearLevelLong::x18>;
@@ -95,6 +107,91 @@ void OnFail()
 	Serial.println(F("--------------------"));
 
 	while (true);;
+}
+
+template<typename UnitType>
+bool CompleteAsyncWrite(UnitType& unit)
+{
+	EmbeddedEEPROM::AsyncOperationStateEnum state = unit.PollWriteData();
+	while (state == EmbeddedEEPROM::AsyncOperationStateEnum::Pending)
+	{
+		delay(1);
+		state = unit.PollWriteData();
+	}
+	return state == EmbeddedEEPROM::AsyncOperationStateEnum::Complete;
+}
+
+void TestAsyncStorageUnit()
+{
+	EmbeddedEEPROM::EraseEEPROM();
+	TestUnitAsyncStorage unit{};
+	const uint8_t expected[] = { 0x12, 0x34, 0x56, 0x78 };
+	uint8_t value[sizeof(expected)]{};
+
+	if (unit.BeginWriteData(nullptr) || !unit.BeginWriteData(expected)
+		|| unit.BeginWriteData(expected) || !CompleteAsyncWrite(unit) || !unit.ReadData(value))
+	{
+		Serial.println(F("\tAsync storage write or CRC validation failed."));
+		OnFail();
+	}
+	for (uint8_t i = 0; i < sizeof(expected); i++)
+	{
+		if (value[i] != expected[i])
+		{
+			Serial.println(F("\tAsync storage readback mismatch."));
+			OnFail();
+		}
+	}
+}
+
+template<typename UnitType>
+void TestAsyncWearLevelWrite()
+{
+	EmbeddedEEPROM::EraseEEPROM();
+	UnitType unit{};
+	const uint8_t expected = 42;
+	uint8_t value = 0;
+	if (!unit.BeginWriteData(&expected) || !CompleteAsyncWrite(unit)
+		|| unit.DebugCounter() != 1 || !unit.ReadData(&value) || value != expected)
+	{
+		Serial.println(F("\tAsync wear-level write failed."));
+		OnFail();
+	}
+}
+
+void TestAsyncWearLevelUnit()
+{
+	EmbeddedEEPROM::EraseEEPROM();
+	TestUnitAsyncTiny5 unit{};
+	uint8_t value = 0;
+
+	for (uint8_t i = 0; i < 7; i++)
+	{
+		value = i + 20;
+		if (!unit.BeginWriteData(&value) || !CompleteAsyncWrite(unit))
+		{
+			Serial.println(F("\tAsync wear-level write failed."));
+			OnFail();
+		}
+		const uint8_t expectedCounter = (i + 1) % (uint8_t)WearLevelTiny::x5;
+		uint8_t readback = 0;
+		if (unit.DebugCounter() != expectedCounter || !unit.ReadData(&readback) || readback != value)
+		{
+			Serial.println(F("\tAsync wear-level counter or readback mismatch."));
+			OnFail();
+		}
+	}
+
+	TestUnitAsyncTiny5 reloaded{};
+	uint8_t readback = 0;
+	if (reloaded.DebugCounter() != 2 || !reloaded.ReadData(&readback) || readback != value)
+	{
+		Serial.println(F("\tAsync wear-level data did not persist after reconstruction."));
+		OnFail();
+	}
+	TestAsyncWearLevelWrite<TestUnitAsyncShort10>();
+	TestAsyncWearLevelWrite<TestUnitAsyncLong18>();
+	TestAsyncWearLevelWrite<TestUnitAsyncLongLong34>();
 }
 
 void setup()
@@ -141,6 +238,8 @@ void setup()
 	TestUnitWear<TestUnitLongLong34>("LongLong34");
 	TestUnitWear<TestUnitLongLong65>("LongLong65");
 #endif
+	TestAsyncStorageUnit();
+	TestAsyncWearLevelUnit();
 
 	Serial.println();
 	Serial.println();
