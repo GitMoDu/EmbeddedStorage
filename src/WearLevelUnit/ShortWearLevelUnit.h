@@ -55,7 +55,9 @@ private:
 
 public:
 	ShortWearLevelUnit() : BaseClass()
-	{}
+	{
+		this->Initialize();
+	}
 
 #if defined(WEAR_LEVEL_DEBUG)
 	const uint16_t DebugMask()

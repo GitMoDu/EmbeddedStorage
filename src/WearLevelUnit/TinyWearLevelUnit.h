@@ -42,7 +42,9 @@ private:
 
 public:
 	TinyWearLevelUnit() : BaseClass()
-	{}
+	{
+		this->Initialize();
+	}
 
 #if defined(WEAR_LEVEL_DEBUG)
 	const uint8_t DebugMask()

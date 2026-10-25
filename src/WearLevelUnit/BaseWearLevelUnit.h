@@ -43,9 +43,7 @@ protected:
 
 public:
 	BaseWearLevelUnit()
-	{
-		Initialize();
-	}
+	{}
 
 #if defined(WEAR_LEVEL_DEBUG)
 public:
@@ -129,7 +127,7 @@ public:
 		return EmbeddedEEPROM::ReadBlock(address + offset);
 	}
 
-private:
+protected:
 	/// <summary>
 	/// Ensure the current counter in this Unit is according to spec.
 	/// </summary>
@@ -141,7 +139,6 @@ private:
 		}
 	}
 
-protected:
 	static constexpr uint8_t Uint8Min(const uint8_t a, const uint8_t b)
 	{
 		return ((a <= b) * a) | ((b < a) * b);

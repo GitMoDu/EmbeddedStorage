@@ -35,7 +35,9 @@ private:
 
 public:
 	LongLongWearLevelUnit() : BaseClass()
-	{}
+	{
+		this->Initialize();
+	}
 
 #if defined(WEAR_LEVEL_DEBUG)
 	const uint64_t DebugMask()
