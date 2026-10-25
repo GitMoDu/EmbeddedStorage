@@ -61,7 +61,7 @@ private:
 	const uint32_t GetMask(const uint8_t counter)
 	{
 		uint32_t mask = UINT32_MAX;
-		for (int8_t i = Counts; i >= (Counts - counter); i--)
+		for (int8_t i = Counts - 1; i >= (Counts - counter); i--)
 		{
 			// Remove i bit to mask.
 			mask &= ~((uint32_t)1 << i);
@@ -80,7 +80,7 @@ protected:
 		else if (mask > 0)
 		{
 			// Find first Zero bit from left to right.
-			for (uint8_t i = 0; i <= Counts; i++)
+			for (uint8_t i = 1; i <= Counts; i++)
 			{
 				if (((uint8_t)(mask >> (Counts - i))) & 1)
 				{
@@ -138,30 +138,15 @@ protected:
 	const bool ValidateCounterMask() final
 	{
 		const uint32_t mask = GetMask();
-
-		if (mask == UINT32_MAX)
+		bool foundOne = false;
+		for (uint8_t i = 1; i <= Counts; i++)
 		{
-			return true;
-		}
-		else if (mask > 0)
-		{
-			// Find first 1 bit from left to right.
-			for (uint8_t i = 0; i <= Counts; i++)
+			const bool bitIsOne = ((mask >> (Counts - i)) & 1) != 0;
+			if (foundOne && !bitIsOne)
 			{
-				if (((uint8_t)(mask >> (Counts - i))) & 1)
-				{
-					// Make sure all bits to the right are a 1.
-					for (int8_t j = i; j > 0; j--)
-					{
-						if (~((uint32_t)(mask >> j) & 1))
-						{
-							return false;
-						}
-					}
-
-					return true;
-				}
+				return false;
 			}
+			foundOne = foundOne || bitIsOne;
 		}
 
 		return true;
