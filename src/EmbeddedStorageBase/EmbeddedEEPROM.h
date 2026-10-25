@@ -32,16 +32,143 @@ static uint8_t InMemory[E2END + 1]{};
 class EmbeddedEEPROM
 {
 public:
+	enum class AsyncWriteModeEnum : uint8_t
+	{
+		Replace = 0,
+		ClearBits,
+		EraseOnly,
+		EnumCount
+	};
+
+	enum class AsyncByteStatusEnum : uint8_t
+	{
+		Started = 0,
+		Unchanged,
+		Busy,
+		EnumCount
+	};
+
+	enum class AsyncOperationStateEnum : uint8_t
+	{
+		Idle = 0,
+		Pending,
+		Complete,
+		Failed,
+		EnumCount
+	};
+
 	static constexpr uint16_t Size() { return E2END + 1; };
+
+	static bool TryBeginAsyncOperation()
+	{
+#if defined(EEPROM_MOCK_IN_MEMORY)
+		if (AsyncOperationActive()) { return false; }
+		AsyncOperationActive() = true;
+		return true;
+#else
+		const uint8_t savedSREG = SREG;
+		cli();
+		if (AsyncOperationActive() || (EECR & (1 << EEPE)))
+		{
+			SREG = savedSREG;
+			return false;
+		}
+		AsyncOperationActive() = true;
+		SREG = savedSREG;
+		return true;
+#endif
+	}
+
+	static bool IsAsyncOperationActive()
+	{
+		return AsyncOperationActive();
+	}
+
+	static void EndAsyncOperation()
+	{
+		AsyncOperationActive() = false;
+	}
+
+	static bool IsAsyncByteBusy()
+	{
+		if (!AsyncOperationActive()) { return true; }
+#if defined(EEPROM_MOCK_IN_MEMORY)
+		return false;
+#else
+		return (EECR & (1 << EEPE)) != 0;
+#endif
+	}
+
+	static AsyncByteStatusEnum TryStartAsyncByte(const uint16_t offset,
+		const uint8_t value, const AsyncWriteModeEnum mode)
+	{
+		if (!AsyncOperationActive()) { return AsyncByteStatusEnum::Busy; }
+#if defined(EEPROM_BOUNDS_CHECK)
+		CheckBounds(offset);
+#endif
+#if defined(EEPROM_MOCK_IN_MEMORY)
+		if (mode == AsyncWriteModeEnum::Replace)
+		{
+			if (InMemory[offset] == value) { return AsyncByteStatusEnum::Unchanged; }
+			InMemory[offset] = value;
+		}
+		else if (mode == AsyncWriteModeEnum::ClearBits)
+		{
+			if ((InMemory[offset] & value) == InMemory[offset]) { return AsyncByteStatusEnum::Unchanged; }
+			InMemory[offset] &= value;
+		}
+		else
+		{
+			if (InMemory[offset] == UINT8_MAX) { return AsyncByteStatusEnum::Unchanged; }
+			InMemory[offset] = UINT8_MAX;
+		}
+		return AsyncByteStatusEnum::Started;
+#else
+		if (EECR & (1 << EEPE)) { return AsyncByteStatusEnum::Busy; }
+		const uint8_t current = EEPROM[offset];
+		if ((mode == AsyncWriteModeEnum::Replace && current == value)
+			|| (mode == AsyncWriteModeEnum::ClearBits && (current & value) == current)
+			|| (mode == AsyncWriteModeEnum::EraseOnly && current == UINT8_MAX))
+		{
+			return AsyncByteStatusEnum::Unchanged;
+		}
+
+		const uint8_t savedSREG = SREG;
+		cli();
+		if (EECR & (1 << EEPE))
+		{
+			SREG = savedSREG;
+			return AsyncByteStatusEnum::Busy;
+		}
+
+		EECR &= ~((1 << EEPM1) | (1 << EEPM0) | (1 << EERIE));
+		if (mode == AsyncWriteModeEnum::ClearBits)
+		{
+			EECR |= (1 << EEPM1);
+		}
+		else if (mode == AsyncWriteModeEnum::EraseOnly)
+		{
+			EECR |= (1 << EEPM0);
+		}
+		EEAR = offset;
+		EEDR = (mode == AsyncWriteModeEnum::EraseOnly) ? UINT8_MAX : value;
+		EECR |= (1 << EEMPE);
+		EECR |= (1 << EEPE);
+		SREG = savedSREG;
+		return AsyncByteStatusEnum::Started;
+#endif
+	}
 
 #if defined(EEPROM_MOCK_IN_MEMORY)
 	static void EraseEEPROM()
 	{
+		if (IsAsyncOperationActive()) { return; }
 		memset(InMemory, UINT8_MAX, sizeof(InMemory));
 	}
 
 	static void WriteBlock(const uint16_t offset, const uint8_t block)
 	{
+		if (IsAsyncOperationActive()) { return; }
 #if defined(EEPROM_BOUNDS_CHECK)
 		CheckBounds(offset);
 #endif
@@ -58,11 +185,13 @@ public:
 
 	static void ProgramZeroBitsToZero(const uint16_t offset, const uint8_t byteWithZeros)
 	{
+		if (IsAsyncOperationActive()) { return; }
 		InMemory[offset] &= byteWithZeros;
 	}
 
 	static void ClearByteToOnes(const uint16_t offset)
 	{
+		if (IsAsyncOperationActive()) { return; }
 		InMemory[offset] = UINT8_MAX;
 	}
 #else
@@ -71,6 +200,7 @@ public:
 		/// </summary>
 		static void EraseEEPROM()
 	{
+		if (IsAsyncOperationActive()) { return; }
 		for (uint16_t i = 0; i < Size(); i++)
 		{
 			EEPROM.update(i, UINT8_MAX);
@@ -79,6 +209,7 @@ public:
 
 	static void WriteBlock(const uint16_t offset, const uint8_t block)
 	{
+		if (IsAsyncOperationActive()) { return; }
 #if defined(EEPROM_BOUNDS_CHECK)
 		CheckBounds(offset);
 #endif
@@ -103,6 +234,7 @@ public:
 	/// <param name="byteWithZeros"></param>
 	static void ProgramZeroBitsToZero(const uint16_t offset, const uint8_t byteWithZeros)
 	{
+		if (IsAsyncOperationActive()) { return; }
 		//// Wait for completion of any pending operations.
 		//while (EECR & (1 << EEPE));
 
@@ -139,6 +271,7 @@ public:
 
 	static void ClearByteToOnes(const uint16_t offset)
 	{
+		if (IsAsyncOperationActive()) { return; }
 		// Wait for completion of any pending operations.
 		while (EECR & (1 << EEPE));
 
@@ -174,6 +307,12 @@ public:
 #endif
 
 private:
+	static bool& AsyncOperationActive()
+	{
+		static bool active = false;
+		return active;
+	}
+
 #if defined(EEPROM_BOUNDS_CHECK)
 	static void CheckBounds(int offset)
 	{
