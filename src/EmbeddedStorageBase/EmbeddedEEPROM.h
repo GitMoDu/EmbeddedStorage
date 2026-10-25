@@ -195,10 +195,10 @@ public:
 		InMemory[offset] = UINT8_MAX;
 	}
 #else
-		/// <summary>
-		/// Clears the entire EEPROM memory. Handle with care.
-		/// </summary>
-		static void EraseEEPROM()
+	/// <summary>
+	/// Clears the entire EEPROM memory. Handle with care.
+	/// </summary>
+	static void EraseEEPROM()
 	{
 		if (IsAsyncOperationActive()) { return; }
 		for (uint16_t i = 0; i < Size(); i++)
