@@ -2,11 +2,11 @@
 	Library Unit Testing Project.
 */
 
-#define SERIAL_BAUD_RATE 9600
+#define SERIAL_BAUD_RATE 115200
 
 #define EEPROM_BOUNDS_CHECK
 #define WEAR_LEVEL_DEBUG
-//#define EEPROM_MOCK_IN_MEMORY
+#define EEPROM_MOCK_IN_MEMORY
 
 #include <AsyncStorageUnit.h>
 #include <StorageUnit.h>
