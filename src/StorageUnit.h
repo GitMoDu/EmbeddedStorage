@@ -47,7 +47,6 @@ public:
 	/// <returns>True if CRC matches.</returns>
 	const bool ReadData(uint8_t* target)
 	{
-		if (EmbeddedEEPROM::IsAsyncOperationActive()) { return false; }
 		for (uint16_t i = 0; i < DataSize; i++)
 		{
 			target[i] = EmbeddedEEPROM::ReadBlock(address + i);

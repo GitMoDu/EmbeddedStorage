@@ -129,7 +129,6 @@ public:
 	/// <returns>True if CRC matches.</returns>
 	const bool ReadData(uint8_t* target)
 	{
-		if (EmbeddedEEPROM::IsAsyncOperationActive()) { return false; }
 		const uint8_t counter = GetCurrentCounter();
 		const uint16_t offset = GetDataOffset(counter);
 
